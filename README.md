@@ -12,6 +12,19 @@ npm run dev        # play at http://localhost:5173
 npm run build      # static bundle in dist/
 ```
 
+## Deploying
+
+It is a fully static bundle with no runtime network calls — all artwork is
+vendored into the repo — so any static host works.
+
+For **GitHub Pages**, [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)
+builds and publishes on every push to `main`. Enable it once under
+*Settings → Pages → Build and deployment → Source: **GitHub Actions***.
+
+`vite.config.ts` sets `base: './'`, so the bundle is path-agnostic: it works at
+a user page (`user.github.io`), a project page (`user.github.io/atlas/`) or any
+subdirectory, with no configuration.
+
 ## How it plays
 
 - **Drag** the object from the tray onto the pile. It does not collide with
