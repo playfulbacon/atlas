@@ -73,11 +73,24 @@ The catalog is data. To add one:
 2. `npm run assets` — vendors the artwork into `assets/objects/<id>.svg`.
 
 That is the whole process. **No collision shape is authored by hand:** at load
-time each sprite is rasterised, its alpha channel is traced with Moore-neighbour
-boundary following, simplified with Douglas–Peucker, and handed to `poly-decomp`
-for convex decomposition (see [`src/sprites.js`](src/sprites.js)). Anything that
-fails to decompose cleanly falls back to its convex hull, so a bad outline
-degrades instead of breaking.
+time each sprite is rasterised, dilated so hairline strokes weld together, and
+its largest connected blob traced with Moore-neighbour boundary following. The
+outline is simplified with Douglas–Peucker down to a vertex budget — keeping the
+most detailed *simple* polygon along the way — then handed to `poly-decomp` for
+convex decomposition. See [`src/sprites.js`](src/sprites.js).
+
+Two guards matter, because a silently wrong collision shape is worse than an
+obviously crude one:
+
+- the trace uses Jacob's stopping criterion, so a boundary that doubles back
+  through its own starting pixel does not close the loop early;
+- the result is **checked against the artwork it came from**. An outline that
+  fails to span 70% of the sprite in both axes is thrown away for a convex
+  silhouette, which is coarse but at least the right size.
+
+`npm run typecheck` will not catch a bad outline, so if you add unusual artwork,
+eyeball it in game — an object that things fall straight through has an outline
+that collapsed.
 
 Field reference:
 

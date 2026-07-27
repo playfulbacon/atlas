@@ -31,8 +31,12 @@ export const TOPPLE_Y = 120;
 /** ...or this far sideways. */
 export const TOPPLE_X = 2600;
 
-/** Compound bodies beyond this many parts get replaced with their convex hull. */
-const MAX_PARTS = 12;
+/**
+ * Compound bodies beyond this many parts get replaced with their convex hull.
+ * Generous on purpose: the hull of something like a bicycle is a solid slab
+ * covering the wheels, which is far worse for stacking than a few extra parts.
+ */
+const MAX_PARTS = 26;
 
 export function createEngine() {
   const engine = Engine.create({

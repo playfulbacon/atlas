@@ -16,10 +16,22 @@ import { spriteUrl } from './catalog.js';
  * renderer actually blits.
  */
 const RASTER = 256;
-/** Alpha above this counts as solid. */
-const ALPHA_THRESHOLD = 40;
-/** Outlines above this get simplified harder; convex decomposition hates detail. */
-const MAX_HULL_POINTS = 18;
+/**
+ * Alpha above this counts as solid. Deliberately low: antialiased hairlines in
+ * line art have to stay attached to what they join, or the outline walks off.
+ */
+const ALPHA_THRESHOLD = 16;
+/**
+ * Raster pixels of dilation before tracing, so near-touching strokes (a bicycle
+ * frame meeting its wheel) read as one connected blob.
+ */
+const DILATE = 2;
+/**
+ * Vertex budget for a traced outline. Too low and complex silhouettes — a
+ * bicycle, a ladder — get flattened until they are effectively convex blobs
+ * whose collision shape covers the holes they should have.
+ */
+const MAX_HULL_POINTS = 28;
 
 /** @type {Map<string, Promise<Sprite>>} */
 const cache = new Map();
@@ -108,16 +120,17 @@ async function build(url) {
   /** @param {Vec} p @returns {Vec} */
   const toLocal = (p) => ({ x: (p.x - cx) * k, y: (p.y - cy) * k });
 
-  const traced = traceContour(mask, rw, rh);
+  const outline = traceOutline(mask, rw, rh, { minX, minY, maxX, maxY });
   /** @type {Vec[]} */
   let hull;
-  let convexFallback;
+  let convexFallback = outline.fellBack;
 
-  if (traced.length >= 8) {
-    hull = simplifyToBudget(traced, MAX_HULL_POINTS).map(toLocal);
-    convexFallback = false;
+  if (outline.points.length >= 8 && !outline.fellBack) {
+    hull = simplifyToBudget(outline.points, MAX_HULL_POINTS).map(toLocal);
   } else {
-    hull = convexHull(traced.length ? traced : boxPoints(minX, minY, maxX, maxY)).map(toLocal);
+    hull = convexHull(
+      outline.points.length ? outline.points : boxPoints(minX, minY, maxX, maxY),
+    ).map(toLocal);
     convexFallback = true;
   }
 
@@ -225,6 +238,140 @@ const NEIGHBOURS = [
 ];
 
 /**
+ * Produces an outline that actually wraps the artwork.
+ *
+ * Tracing alone is not enough: line art rasterises into strokes that only just
+ * touch, and a bare boundary walk can wander off down a hairline and close
+ * early. So dilate first to weld the strokes together, trace the largest
+ * connected blob, then *check the result covers the sprite* — a bicycle whose
+ * outline spans 10% of its own width is a collision shape objects fall through,
+ * and silently shipping that is worse than a coarse convex hull.
+ *
+ * @param {Uint8Array} mask
+ * @param {number} w
+ * @param {number} h
+ * @param {{minX: number, minY: number, maxX: number, maxY: number}} box
+ * @returns {{ points: Vec[], fellBack: boolean }}
+ */
+function traceOutline(mask, w, h, box) {
+  const solid = dilate(mask, w, h, DILATE);
+  const main = largestComponent(solid, w, h);
+
+  const spanX = Math.max(1, box.maxX - box.minX);
+  const spanY = Math.max(1, box.maxY - box.minY);
+
+  // Only trust a trace of one dominant blob.
+  if (main.count / Math.max(1, main.total) >= 0.8) {
+    const traced = traceContour(main.mask, w, h);
+    if (traced.length >= 8) {
+      let tMinX = Infinity, tMinY = Infinity, tMaxX = -Infinity, tMaxY = -Infinity;
+      for (const p of traced) {
+        tMinX = Math.min(tMinX, p.x); tMaxX = Math.max(tMaxX, p.x);
+        tMinY = Math.min(tMinY, p.y); tMaxY = Math.max(tMaxY, p.y);
+      }
+      const coverX = (tMaxX - tMinX) / spanX;
+      const coverY = (tMaxY - tMinY) / spanY;
+      if (coverX >= 0.7 && coverY >= 0.7) return { points: traced, fellBack: false };
+    }
+  }
+
+  // Fall back to a convex outline of the whole sprite. Coarse, but it is the
+  // right size, which matters far more than being the right shape.
+  return { points: silhouetteExtremes(mask, w, h), fellBack: true };
+}
+
+/**
+ * Grow the mask by `radius` pixels, four-connected.
+ * @param {Uint8Array} mask @param {number} w @param {number} h @param {number} radius
+ * @returns {Uint8Array}
+ */
+function dilate(mask, w, h, radius) {
+  let src = mask;
+  for (let pass = 0; pass < radius; pass++) {
+    const out = new Uint8Array(src.length);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const i = y * w + x;
+        if (src[i]) { out[i] = 1; continue; }
+        if ((x > 0 && src[i - 1]) || (x < w - 1 && src[i + 1]) ||
+            (y > 0 && src[i - w]) || (y < h - 1 && src[i + w])) out[i] = 1;
+      }
+    }
+    src = out;
+  }
+  return src;
+}
+
+/**
+ * Largest eight-connected blob, plus how much of the sprite it accounts for.
+ * @param {Uint8Array} mask @param {number} w @param {number} h
+ * @returns {{ mask: Uint8Array, count: number, total: number }}
+ */
+function largestComponent(mask, w, h) {
+  const label = new Int32Array(mask.length).fill(-1);
+  const stack = new Int32Array(mask.length);
+  /** @type {number[]} */
+  const counts = [];
+
+  for (let start = 0; start < mask.length; start++) {
+    if (!mask[start] || label[start] >= 0) continue;
+    const id = counts.length;
+    let sp = 0;
+    let count = 0;
+    stack[sp++] = start;
+    label[start] = id;
+    while (sp > 0) {
+      const i = stack[--sp];
+      count++;
+      const x = i % w;
+      const y = (i / w) | 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const nx = x + dx;
+          const ny = y + dy;
+          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+          const j = ny * w + nx;
+          if (mask[j] && label[j] < 0) { label[j] = id; stack[sp++] = j; }
+        }
+      }
+    }
+    counts.push(count);
+  }
+
+  let bestId = -1, bestCount = 0, total = 0;
+  for (let i = 0; i < counts.length; i++) {
+    total += counts[i];
+    if (counts[i] > bestCount) { bestCount = counts[i]; bestId = i; }
+  }
+
+  const out = new Uint8Array(mask.length);
+  if (bestId >= 0) for (let i = 0; i < mask.length; i++) if (label[i] === bestId) out[i] = 1;
+  return { mask: out, count: bestCount, total };
+}
+
+/**
+ * Leftmost and rightmost solid pixel of every row. The convex hull of a pixel
+ * set is the convex hull of these, and there are only a few hundred of them.
+ * @param {Uint8Array} mask @param {number} w @param {number} h
+ * @returns {Vec[]}
+ */
+function silhouetteExtremes(mask, w, h) {
+  /** @type {Vec[]} */
+  const points = [];
+  for (let y = 0; y < h; y++) {
+    let lo = -1, hi = -1;
+    for (let x = 0; x < w; x++) {
+      if (mask[y * w + x]) { if (lo < 0) lo = x; hi = x; }
+    }
+    if (lo >= 0) {
+      points.push({ x: lo, y });
+      if (hi !== lo) points.push({ x: hi, y });
+    }
+  }
+  return points;
+}
+
+/**
  * Moore-neighbour boundary tracing. Walks the outside edge of the largest
  * connected blob and returns it as a pixel-resolution polygon.
  * @param {Uint8Array} mask
@@ -252,46 +399,74 @@ function traceContour(mask, w, h) {
   let backtrack = 4; // we arrived from the west
   const maxSteps = w * h * 4;
 
+  // Jacob's stopping criterion: the walk is only finished when it re-enters the
+  // start pixel *and* leaves it the same way it did the first time. Stopping on
+  // any revisit instead closes the loop early wherever the boundary doubles
+  // back through the start — which is exactly what a thin handlebar or a violin
+  // scroll does, and it was reducing whole objects to a sliver.
+  let firstNextX = -1;
+  let firstNextY = -1;
+
   for (let step = 0; step < maxSteps; step++) {
     contour.push({ x: cx, y: cy });
-    let moved = false;
+
+    let nextX = -1;
+    let nextY = -1;
+    let nextDir = -1;
     for (let i = 1; i <= 8; i++) {
       const dir = (backtrack + i) % 8;
-      const nx = cx + NEIGHBOURS[dir][0];
-      const ny = cy + NEIGHBOURS[dir][1];
-      if (solid(nx, ny)) {
-        backtrack = (dir + 4) % 8;
-        cx = nx;
-        cy = ny;
-        moved = true;
-        break;
-      }
+      const px = cx + NEIGHBOURS[dir][0];
+      const py = cy + NEIGHBOURS[dir][1];
+      if (solid(px, py)) { nextX = px; nextY = py; nextDir = dir; break; }
     }
-    // An isolated pixel, or we closed the loop.
-    if (!moved) break;
-    if (cx === sx && cy === sy && contour.length > 2) break;
+    if (nextDir < 0) break; // isolated pixel
+
+    if (firstNextX < 0) {
+      firstNextX = nextX;
+      firstNextY = nextY;
+    } else if (cx === sx && cy === sy && nextX === firstNextX && nextY === firstNextY) {
+      contour.pop(); // the start is already the first entry
+      break;
+    }
+
+    backtrack = (nextDir + 4) % 8;
+    cx = nextX;
+    cy = nextY;
   }
 
   return contour;
 }
 
 /**
- * Ramp up Douglas–Peucker tolerance until the outline fits the vertex budget.
+ * Ramp up Douglas–Peucker tolerance until the outline fits the vertex budget,
+ * keeping the most detailed *simple* polygon seen along the way.
+ *
+ * Douglas–Peucker on a closed loop can fold the outline into itself, and
+ * poly-decomp needs a simple polygon. Falling straight back to a convex hull
+ * when that happens was throwing away the shape entirely — a bicycle became a
+ * five-sided slab. Retreating to the last simple result keeps the concavity.
+ *
  * @param {Vec[]} points
  * @param {number} budget
  * @returns {Vec[]}
  */
 function simplifyToBudget(points, budget) {
-  let epsilon = RASTER / 120;
-  let simplified = rdp(points, epsilon);
-  for (let i = 0; i < 24 && simplified.length > budget; i++) {
-    epsilon *= 1.35;
-    simplified = rdp(points, epsilon);
+  /** @type {Vec[] | null} */
+  let bestSimple = null;
+  let epsilon = RASTER / 160;
+
+  for (let i = 0; i < 30; i++) {
+    const simplified = rdp(points, epsilon);
+    if (simplified.length >= 3 && isSimplePolygon(simplified)) {
+      bestSimple = simplified;
+      if (simplified.length <= budget) return simplified;
+    }
+    if (simplified.length < 3) break;
+    epsilon *= 1.25;
   }
-  if (simplified.length < 3) return convexHull(points);
-  // Douglas–Peucker on a closed loop can occasionally fold; a convex hull is
-  // always safe and still stacks fine.
-  return isSimplePolygon(simplified) ? simplified : convexHull(points);
+
+  // Over budget but honest beats on budget and convex.
+  return bestSimple && bestSimple.length >= 3 ? bestSimple : convexHull(points);
 }
 
 /**
