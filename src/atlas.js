@@ -1,98 +1,101 @@
 import { GROUND_Y } from './physics.js';
 
 /**
- * Atlas is drawn, not simulated. He is hunched forward with the load riding on
- * his upper back, arms hanging down and out to the elbows, forearms rising at
- * his sides, and both palms turned inward at the top to meet his back.
+ * Atlas is drawn, not simulated: a kneeling figure braced under the load, in
+ * flat angular line-art — straight segments, mitred corners, one pale stone
+ * fill, no rendered curves anywhere.
  *
- * The one rule: the crown of his back and the flats of both palms sit at
- * exactly y = 0 and together span the platform's full 400 units, which is the
- * top surface of the static platform body. There is no slab — the back and the
- * hands *are* the surface.
+ * The one rule: the flat of his back and the flats of both hands sit at exactly
+ * y = 0 and together span the platform's full 400 units, which is the top
+ * surface of the static platform body. Nothing else is drawn up there.
  */
 
-const SKIN = '#e8b88a';
-const SKIN_SHADE = '#d9a273';
+const STONE = '#f0e9dd';
+const STONE_SHADE = '#bcae94';
 const INK = '#1f1b17';
 
 /** @typedef {{ ground: string, groundShade: string }} AtlasStyle */
-/** @typedef {{ points: Array<[number, number]>, width: number }} Limb */
+/** @typedef {Array<[number, number]>} Poly */
+/** @typedef {{ spine: Poly, widths: number[] }} Limb */
 
 /**
- * A deep squat under the weight. His stance is wider than the load he carries,
- * which is what stops the whole arrangement reading as a table.
- * @type {Limb[]}
+ * Back, ribs and hips as one closed polygon. Its top edge is the straight run
+ * from −130 to 130 that the load rests on.
+ * @type {Poly}
  */
-const LEGS = [
-  { points: [[-70, 162], [-176, 282]], width: 46 },
-  { points: [[-176, 282], [-154, 366]], width: 38 },
-  { points: [[70, 162], [176, 282]], width: 46 },
-  { points: [[176, 282], [154, 366]], width: 38 },
+const BODY = [
+  [-116, 0], [116, 0],
+  [122, 46], [100, 120], [82, 196], [68, 250], [52, 294], [0, 312],
+  [-52, 294], [-68, 250], [-82, 196], [-100, 120], [-122, 46],
 ];
 
-/** @type {Limb[]} */
-const FEET = [
-  { points: [[-158, 366], [-216, 366]], width: 28 },
-  { points: [[158, 366], [216, 366]], width: 28 },
-];
+/** Flat of the hand, carrying the shelf out to the platform edge. @type {Poly} */
+const HAND = [[110, 0], [216, 0], [212, 36], [114, 40]];
 
 /**
- * Arms reaching up and back. Upper arm drops from under the shoulder out to a
- * low elbow, forearm climbs almost vertically at his side, then the palm turns
- * inward along the top — half its own width below y = 0, so its flat lands
- * exactly on the carrying surface and bridges from the hand to the back.
- * @type {Limb[]}
- */
-const ARMS = [
-  { points: [[-84, 96], [-140, 104], [-176, 128]], width: 40 },
-  { points: [[-176, 128], [-188, 40]], width: 34 },
-  { points: [[-187, 13], [-132, 13]], width: 26 },
-  { points: [[84, 96], [140, 104], [176, 128]], width: 40 },
-  { points: [[176, 128], [188, 40]], width: 34 },
-  { points: [[187, 13], [132, 13]], width: 26 },
-];
-
-const ELBOW = { x: 176, y: 128 };
-const WRIST = { x: 186, y: 42 };
-
-/**
- * Atlas' body, as one silhouette: the flat of his back across the top, rolling
- * over the shoulders and down the flanks into his hips.
+ * Limbs are tapered polylines: joints plus a width at each, offset into a
+ * closed polygon. Straight edges throughout, and no gap at the joints.
  *
- * Deliberately a single closed path. Drawing the back as its own shape on top
- * of a torso gave him an outlined dome — a bowl strapped to his shoulders —
- * which is not what a bent-over back looks like. His head hangs below and
- * covers the middle of the bottom edge, so no closed rim reads anywhere.
- * @param {CanvasRenderingContext2D} ctx
+ * Every limb here is a single straight segment. A polyline that folds back on
+ * itself — an arm doubling up at the elbow — has no usable offset direction at
+ * the fold, and the polygon pinches shut into a sliver. Overlapping segments
+ * cost nothing and leave a crease at the joint, which suits the style anyway.
  */
-function bodyPath(ctx) {
-  ctx.beginPath();
-  ctx.moveTo(-120, 0);
-  ctx.lineTo(120, 0);
-  ctx.bezierCurveTo(131, 4, 129, 28, 124, 54);
-  ctx.bezierCurveTo(118, 84, 106, 112, 94, 134);
-  ctx.bezierCurveTo(84, 152, 62, 164, 36, 168);
-  ctx.bezierCurveTo(24, 170, 12, 171, 0, 171);
-  ctx.bezierCurveTo(-12, 171, -24, 170, -36, 168);
-  ctx.bezierCurveTo(-62, 164, -84, 152, -94, 134);
-  ctx.bezierCurveTo(-106, 112, -118, 84, -124, 54);
-  ctx.bezierCurveTo(-129, 28, -131, 4, -120, 0);
-  ctx.closePath();
+/** @type {Limb} */ const UPPER_ARM = { spine: [[110, 36], [202, 174]], widths: [70, 58] };
+/** @type {Limb} */ const FOREARM = { spine: [[204, 178], [214, 44]], widths: [58, 46] };
+
+/** Near leg: knee up, foot planted flat. */
+/** @type {Limb} */ const THIGH_PLANTED = { spine: [[60, 290], [186, 372]], widths: [70, 56] };
+/** @type {Limb} */ const SHIN_PLANTED = { spine: [[186, 372], [196, 494]], widths: [56, 38] };
+/** @type {Limb} */ const FOOT_PLANTED = { spine: [[184, 504], [258, 506]], widths: [36, 26] };
+
+/** Far leg: knee down on the ground, shin folded back along it. */
+/** Shin folds back behind him, so the knee alone rests on the ground. */
+/** @type {Limb} */ const THIGH_KNEEL = { spine: [[-60, 290], [-136, 476]], widths: [70, 56] };
+/** @type {Limb} */ const SHIN_KNEEL = { spine: [[-136, 488], [-58, 506]], widths: [50, 34] };
+
+const HEAD = { x: 0, y: 76, rx: 54, ry: 48 };
+
+/**
+ * Offsets a polyline into a closed tapered polygon.
+ * @param {Limb} limb
+ * @param {number} [flip] -1 mirrors it to the other side.
+ * @returns {Poly}
+ */
+function limbPolygon(limb, flip = 1) {
+  /** @type {Poly} */
+  const left = [];
+  /** @type {Poly} */
+  const right = [];
+  const pts = limb.spine;
+
+  for (let i = 0; i < pts.length; i++) {
+    const prev = pts[i - 1] ?? pts[i];
+    const next = pts[i + 1] ?? pts[i];
+    const dx = next[0] - prev[0];
+    const dy = next[1] - prev[1];
+    const len = Math.hypot(dx, dy) || 1;
+    const nx = -dy / len;
+    const ny = dx / len;
+    const half = limb.widths[i] / 2;
+    left.push([(pts[i][0] + nx * half) * flip, pts[i][1] + ny * half]);
+    right.push([(pts[i][0] - nx * half) * flip, pts[i][1] - ny * half]);
+  }
+  return left.concat(right.reverse());
 }
 
 /**
  * @param {CanvasRenderingContext2D} ctx
- * @param {Limb} limb
+ * @param {Poly} poly
+ * @param {number} [flip]
  */
-function limbPath(ctx, limb) {
+function drawPoly(ctx, poly, flip = 1) {
   ctx.beginPath();
-  const [first, ...rest] = limb.points;
-  ctx.moveTo(first[0], first[1]);
-  if (rest.length === 1) {
-    ctx.lineTo(rest[0][0], rest[0][1]);
-  } else {
-    ctx.quadraticCurveTo(rest[0][0], rest[0][1], rest[1][0], rest[1][1]);
-  }
+  ctx.moveTo(poly[0][0] * flip, poly[0][1]);
+  for (let i = 1; i < poly.length; i++) ctx.lineTo(poly[i][0] * flip, poly[i][1]);
+  ctx.closePath();
+  ctx.fill();
+  ctx.stroke();
 }
 
 /**
@@ -109,7 +112,7 @@ function limbPath(ctx, limb) {
  */
 export function drawAtlas(ctx, opts) {
   const { strain, time, scale, style } = opts;
-  const ink = Math.max(3.4, 1.5 / scale);
+  const ink = Math.max(4.5, 2 / scale);
 
   drawGround(ctx, style, ink);
 
@@ -118,39 +121,35 @@ export function drawAtlas(ctx, opts) {
   const wobble = strain * 2.6;
   ctx.translate(Math.sin(time * 21) * wobble, Math.sin(time * 16.5 + 1.1) * wobble * 0.55);
 
-  ctx.lineJoin = 'round';
-  ctx.lineCap = 'round';
-
-  // Thick limbs are stroked twice: once wide in ink, once narrower in skin.
-  for (const pass of [0, 1]) {
-    ctx.strokeStyle = pass === 0 ? INK : SKIN;
-    for (const limb of [...LEGS, ...FEET]) {
-      ctx.lineWidth = limb.width + (pass === 0 ? ink * 2 : 0);
-      limbPath(ctx, limb);
-      ctx.stroke();
-    }
-  }
-
-  ctx.fillStyle = SKIN;
+  // Mitred joins, flat caps: every corner on this figure is a corner.
+  ctx.lineJoin = 'miter';
+  ctx.lineCap = 'butt';
+  ctx.miterLimit = 3;
+  ctx.fillStyle = STONE;
   ctx.strokeStyle = INK;
   ctx.lineWidth = ink;
-  bodyPath(ctx);
-  ctx.fill();
-  ctx.stroke();
 
-  // Head hangs below the back, covering the middle of its lower edge.
+  // Kneeling leg behind, then the body over it, then the near leg, head, arms.
+  drawPoly(ctx, limbPolygon(THIGH_KNEEL));
+  drawPoly(ctx, limbPolygon(SHIN_KNEEL));
+
+  drawPoly(ctx, limbPolygon(THIGH_PLANTED));
+  drawPoly(ctx, limbPolygon(SHIN_PLANTED));
+  drawPoly(ctx, limbPolygon(FOOT_PLANTED));
+
+  drawPoly(ctx, BODY);
   drawHead(ctx, strain, ink);
 
-  for (const pass of [0, 1]) {
-    ctx.strokeStyle = pass === 0 ? INK : SKIN;
-    for (const limb of ARMS) {
-      ctx.lineWidth = limb.width + (pass === 0 ? ink * 2 : 0);
-      limbPath(ctx, limb);
-      ctx.stroke();
-    }
+  for (const flip of [-1, 1]) {
+    ctx.fillStyle = STONE;
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = ink;
+    drawPoly(ctx, limbPolygon(UPPER_ARM, flip));
+    drawPoly(ctx, limbPolygon(FOREARM, flip));
+    drawPoly(ctx, HAND, flip);
   }
 
-  drawArmDetail(ctx, ink);
+  drawFacets(ctx, ink);
   if (strain > 0.3) drawEffort(ctx, strain, time, ink);
 
   ctx.restore();
@@ -176,117 +175,107 @@ function drawGround(ctx, style, ink) {
 }
 
 /**
+ * Bowed head, faceted like the rest of him.
  * @param {CanvasRenderingContext2D} ctx
  * @param {number} strain
  * @param {number} ink
  */
 function drawHead(ctx, strain, ink) {
-  ctx.save();
-  ctx.translate(0, 176);
+  const { x, y, rx, ry } = HEAD;
+  /** @type {Poly} */
+  const shape = [
+    [0, -ry], [rx * 0.68, -ry * 0.72], [rx, -ry * 0.1], [rx * 0.72, ry * 0.72],
+    [0, ry], [-rx * 0.72, ry * 0.72], [-rx, -ry * 0.1], [-rx * 0.68, -ry * 0.72],
+  ].map((p) => /** @type {[number, number]} */ ([p[0] + x, p[1] + y]));
+
+  ctx.fillStyle = STONE;
   ctx.strokeStyle = INK;
   ctx.lineWidth = ink;
+  drawPoly(ctx, shape);
 
-  ctx.fillStyle = SKIN;
-  ctx.beginPath();
-  ctx.arc(0, 0, 56, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.lineWidth = ink * 0.9;
+  ctx.lineCap = 'round';
 
-  // Eyes: serene arcs that squeeze shut as the load grows.
-  ctx.lineWidth = ink * 1.1;
-  const squeeze = Math.min(1, strain * 1.4);
+  // Eyes: level when calm, screwed shut under load. Strokes, never curves.
   for (const side of [-1, 1]) {
     ctx.beginPath();
-    if (squeeze < 0.5) {
-      ctx.arc(side * 22, -3, 13, Math.PI * 0.15, Math.PI * 0.85);
+    if (strain < 0.35) {
+      ctx.moveTo(side * 20 - 10, -5);
+      ctx.lineTo(side * 20 + 10, -5);
     } else {
-      ctx.moveTo(side * 22 - 13, 4);
-      ctx.lineTo(side * 22, -10);
-      ctx.lineTo(side * 22 + 13, 4);
+      ctx.moveTo(side * 20 - 10, 1);
+      ctx.lineTo(side * 20, -8);
+      ctx.lineTo(side * 20 + 10, 1);
     }
     ctx.stroke();
   }
 
-  // Brow lines when it really starts to hurt.
   if (strain > 0.55) {
     ctx.beginPath();
-    ctx.moveTo(-36, -18); ctx.lineTo(-12, -8);
-    ctx.moveTo(36, -18); ctx.lineTo(12, -8);
+    ctx.moveTo(-33, -20); ctx.lineTo(-12, -12);
+    ctx.moveTo(33, -20); ctx.lineTo(12, -12);
     ctx.stroke();
   }
 
-  // Mouth: calm line, then a gritted grimace.
+  // Mouth: a set line, then bared teeth.
+  ctx.lineCap = 'butt';
   if (strain < 0.35) {
     ctx.beginPath();
-    ctx.moveTo(-14, 24);
-    ctx.quadraticCurveTo(0, 31, 14, 24);
+    ctx.moveTo(-10, 18);
+    ctx.lineTo(10, 18);
     ctx.stroke();
   } else {
-    const w = 15 + strain * 8;
+    const w = 12 + strain * 5;
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
-    ctx.rect(-w, 14, w * 2, 16);
+    ctx.rect(-w, 12, w * 2, 13);
     ctx.fill();
     ctx.stroke();
     ctx.beginPath();
     for (let i = -1; i <= 1; i++) {
-      ctx.moveTo((i * w) / 2, 14);
-      ctx.lineTo((i * w) / 2, 30);
+      ctx.moveTo((i * w) / 2, 12);
+      ctx.lineTo((i * w) / 2, 25);
     }
     ctx.stroke();
   }
-
   ctx.restore();
 }
 
 /**
+ * The few interior lines that make him read as a carved figure rather than a
+ * flat cut-out. All straight, all sparse.
  * @param {CanvasRenderingContext2D} ctx
  * @param {number} ink
  */
-function drawArmDetail(ctx, ink) {
-  ctx.lineCap = 'round';
+function drawFacets(ctx, ink) {
+  ctx.strokeStyle = STONE_SHADE;
+  ctx.lineWidth = ink * 0.8;
+  ctx.lineCap = 'butt';
+
+  ctx.beginPath();
+  // Shoulder blades and flanks.
+  ctx.moveTo(-98, 22); ctx.lineTo(-62, 132); ctx.lineTo(-40, 248);
+  ctx.moveTo(98, 22); ctx.lineTo(62, 132); ctx.lineTo(40, 248);
+  ctx.moveTo(-78, 202); ctx.lineTo(0, 232); ctx.lineTo(78, 202);
+  ctx.stroke();
 
   for (const side of [-1, 1]) {
-    ctx.strokeStyle = SKIN_SHADE;
-    ctx.lineWidth = ink * 0.85;
-
-    // Elbow, across the outside of the bend.
     ctx.beginPath();
-    ctx.moveTo(side * (ELBOW.x - 18), ELBOW.y - 4);
-    ctx.quadraticCurveTo(side * (ELBOW.x + 2), ELBOW.y + 6, side * (ELBOW.x + 16), ELBOW.y - 6);
+    // Deltoid and forearm planes.
+    ctx.moveTo(side * 132, 58); ctx.lineTo(side * 184, 132);
+    ctx.moveTo(side * 200, 140); ctx.lineTo(side * 208, 66);
     ctx.stroke();
 
-    // Wrist, where the forearm turns into the flat of the palm.
+    // Knuckles across the flat of the hand.
     ctx.beginPath();
-    ctx.moveTo(side * (WRIST.x - 16), WRIST.y - 4);
-    ctx.quadraticCurveTo(side * WRIST.x, WRIST.y + 5, side * (WRIST.x + 14), WRIST.y - 6);
-    ctx.stroke();
-
-    // Forearm line, following the climb.
-    ctx.beginPath();
-    ctx.moveTo(side * (ELBOW.x + 4), ELBOW.y - 14);
-    ctx.quadraticCurveTo(side * (ELBOW.x + 12), 90, side * (WRIST.x + 1), WRIST.y + 12);
-    ctx.stroke();
-
-    // Fingers along the palm, pointing in toward his spine.
-    ctx.beginPath();
-    for (let i = 0; i < 4; i++) {
-      const x = side * (140 + i * 13);
-      ctx.moveTo(x, 3);
-      ctx.lineTo(x, 12);
+    for (let i = 0; i < 3; i++) {
+      ctx.moveTo(side * (134 + i * 20), 5);
+      ctx.lineTo(side * (133 + i * 20), 19);
     }
     ctx.stroke();
-
-    // Thumb, hooked under the near edge of the palm.
-    ctx.strokeStyle = INK;
-    ctx.lineWidth = ink;
-    ctx.beginPath();
-    ctx.moveTo(side * 136, 22);
-    ctx.quadraticCurveTo(side * 126, 30, side * 118, 24);
-    ctx.stroke();
-
   }
-
 }
 
 /**
@@ -298,22 +287,26 @@ function drawArmDetail(ctx, ink) {
 function drawEffort(ctx, strain, time, ink) {
   ctx.strokeStyle = '#5f9fd4';
   ctx.fillStyle = '#a9dcf7';
-  ctx.lineWidth = ink * 0.9;
+  ctx.lineWidth = ink * 0.8;
+  ctx.lineJoin = 'round';
 
-  // Sweat beads that bloom out from the temples and fall away.
   const beads = strain > 0.7 ? 3 : 2;
   for (let i = 0; i < beads; i++) {
     const phase = (time * 0.7 + i * 0.41) % 1;
     const side = i % 2 === 0 ? -1 : 1;
-    const x = side * (66 + phase * 34);
-    const y = 150 + phase * 96;
+    const x = side * (66 + phase * 40);
+    const y = 44 + phase * 120;
     ctx.globalAlpha = Math.sin(phase * Math.PI) * 0.95;
+    // Angular droplet, to match everything else.
     ctx.beginPath();
     ctx.moveTo(x, y - 13);
-    ctx.bezierCurveTo(x + 9, y - 1, x + 9, y + 11, x, y + 11);
-    ctx.bezierCurveTo(x - 9, y + 11, x - 9, y - 1, x, y - 13);
+    ctx.lineTo(x + 8, y + 2);
+    ctx.lineTo(x, y + 10);
+    ctx.lineTo(x - 8, y + 2);
+    ctx.closePath();
     ctx.fill();
     ctx.stroke();
   }
   ctx.globalAlpha = 1;
+  ctx.lineJoin = 'miter';
 }

@@ -114,7 +114,7 @@ does not turn the pile beneath it into soup.
 | `src/sprites.js` | rasterises art, traces collision outlines from pixels |
 | `src/physics.js` | Matter.js world, body construction, drop projection |
 | `src/camera.js` | framing — keeps guaranteed empty space above the pile |
-| `src/atlas.js` | Atlas himself, drawn in canvas vectors. His back and palms *are* the platform surface |
+| `src/atlas.js` | Atlas himself, in flat angular line-art. His back and both hands *are* the platform surface |
 | `src/ui.js` | the object stage, score readouts, overlays, mass formatting |
 | `src/render.js` | sky, clouds, stars, sprites, landing shadow |
 | `src/input.js` | one-finger drag, two-finger rotate, wheel and keys |

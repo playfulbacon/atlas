@@ -21,8 +21,15 @@ export const PLATFORM_HALF = PLATFORM_WIDTH / 2;
 /** Top surface of the platform. Everything stacks upward from here (−y is up). */
 export const PLATFORM_TOP = 0;
 export const PLATFORM_DEPTH = 30;
-/** Where Atlas is standing. Debris lands here; nothing may be *placed* here. */
-export const GROUND_Y = 380;
+/**
+ * Where Atlas kneels. Debris lands here; nothing may be *placed* here.
+ *
+ * Deliberately far below the platform: a figure that is roughly as wide as what
+ * he carries reads as furniture, not a person. Giving him height instead of
+ * narrowing the platform keeps every object size and the whole difficulty
+ * curve exactly as they were.
+ */
+export const GROUND_Y = 520;
 /**
  * Below the platform, above anything resting on the ground: a body whose centre
  * passes this line has unambiguously fallen off Atlas.
