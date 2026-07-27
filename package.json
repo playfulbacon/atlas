@@ -13,7 +13,8 @@
     "typecheck": "tsc -p jsconfig.json",
     "assets": "node scripts/fetch-assets.mjs",
     "assets:check": "node scripts/fetch-assets.mjs --check",
-    "vendor": "node scripts/vendor-libs.mjs"
+    "vendor": "node scripts/vendor-libs.mjs",
+    "atlas-art": "node scripts/make-atlas-art.mjs"
   },
   "dependencies": {
     "matter-js": "^0.20.0",

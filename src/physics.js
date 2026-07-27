@@ -22,14 +22,29 @@ export const PLATFORM_HALF = PLATFORM_WIDTH / 2;
 export const PLATFORM_TOP = 0;
 export const PLATFORM_DEPTH = 30;
 /**
- * Where Atlas kneels. Debris lands here; nothing may be *placed* here.
+ * Metrics of assets/atlas.svg, in that file's own viewBox units. The artwork is
+ * scaled so the flat across his hands and back — its "support line" — lands
+ * exactly on the platform's top surface and spans its full width.
  *
- * Deliberately far below the platform: a figure that is roughly as wide as what
- * he carries reads as furniture, not a person. Giving him height instead of
- * narrowing the platform keeps every object size and the whole difficulty
- * curve exactly as they were.
+ * Keep in step with scripts/make-atlas-art.mjs, which prints these on every run.
  */
-export const GROUND_Y = 520;
+export const ATLAS_ART = {
+  view: { w: 720, h: 660 },
+  supportY: 46,
+  supportLeft: 90,
+  supportRight: 630,
+  bottom: 612,
+};
+
+/** World units per artwork unit. */
+export const ATLAS_SCALE = PLATFORM_WIDTH / (ATLAS_ART.supportRight - ATLAS_ART.supportLeft);
+
+/**
+ * Where Atlas kneels — derived from the artwork, so his knee and foot always
+ * meet the ground line however the pose is redrawn. Debris lands here; nothing
+ * may be *placed* here.
+ */
+export const GROUND_Y = Math.round((ATLAS_ART.bottom - ATLAS_ART.supportY) * ATLAS_SCALE);
 /**
  * Below the platform, above anything resting on the ground: a body whose centre
  * passes this line has unambiguously fallen off Atlas.
