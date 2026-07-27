@@ -111,15 +111,25 @@ export function createObjectBody(def, sprite, x, y, angle = 0) {
     body = Bodies.rectangle(x, y, bounds.w, bounds.h, options);
   }
 
-  // fromVertices re-centres on the shape's centroid; remember where the artwork
-  // sits relative to that so the picture and the collision shape stay married.
-  const centroid = Vertices.centre(scaled);
   body.gameDef = def;
   body.gameSprite = sprite;
-  body.gameArtOffset = { x: -centroid.x, y: -centroid.y };
+
+  // Matter re-centres a compound body on its parts' centre of mass, which is
+  // NOT the polygon centroid: decomposition discards slivers below minimumArea
+  // and shifts it. Predicting that offset put some artwork (a bucket, say) 26%
+  // of its own height away from its collision shape. So measure it instead.
+  //
+  // The hull was traced from the artwork's visible pixels, so the collision
+  // AABB and the artwork's visible box describe the same rectangle — line up
+  // their centres at angle 0 and the picture can never drift from the physics.
+  Body.setPosition(body, { x, y });
+  const bounds = body.bounds;
+  body.gameArtOffset = {
+    x: (bounds.min.x + bounds.max.x) / 2 - x,
+    y: (bounds.min.y + bounds.max.y) / 2 - y,
+  };
 
   Body.setAngle(body, angle);
-  Body.setPosition(body, { x, y });
   return body;
 }
 
@@ -183,21 +193,44 @@ export function projectDrop(body, obstacles, x, y, angle, maxDrop) {
     setTransform(body, x, y, angle);
     if (overlaps(body, obstacles)) return { status: 'overlap' };
 
-    const span = Math.max(body.bounds.max.y - body.bounds.min.y, 8);
-    const coarse = Math.max(6, span * 0.16);
+    const b = body.bounds;
+    // Only obstacles that overlap horizontally can be hit on a vertical drop.
+    const candidates = obstacles.filter(
+      (o) => o.bounds.max.x > b.min.x && o.bounds.min.x < b.max.x,
+    );
+    if (!candidates.length) return { status: 'nofloor' };
+
+    // Nothing can be touched before the AABBs meet, and nothing can be touched
+    // after we have fallen past every candidate — so only sweep in between.
+    let from = Infinity;
+    let to = -Infinity;
+    let thinnest = Infinity;
+    for (const o of candidates) {
+      from = Math.min(from, o.bounds.min.y - b.max.y);
+      to = Math.max(to, o.bounds.max.y - b.min.y);
+      thinnest = Math.min(thinnest, o.bounds.max.y - o.bounds.min.y);
+    }
+    from = Math.max(0, from);
+    to = Math.min(maxDrop, to);
+    if (to < from) return { status: 'nofloor' };
+
+    // The step must be smaller than the thinnest thing we could land on, or a
+    // large object sweeps clean through a skateboard and settles inside it.
+    const step = Math.min(16, Math.max(2, thinnest * 0.35));
 
     let hitAt = -1;
-    for (let d = coarse; d <= maxDrop; d += coarse) {
+    for (let d = from; d <= to; d += step) {
       setTransform(body, x, y + d, angle);
-      if (overlaps(body, obstacles)) { hitAt = d; break; }
+      if (overlaps(body, candidates)) { hitAt = d; break; }
     }
     if (hitAt < 0) return { status: 'nofloor' };
 
-    const fine = coarse / 8;
-    let rest = hitAt - coarse;
+    // Creep forward from the last known-clear position for a snug landing.
+    const fine = step / 8;
+    let rest = Math.max(0, hitAt - step);
     for (let d = rest + fine; d < hitAt; d += fine) {
       setTransform(body, x, y + d, angle);
-      if (overlaps(body, obstacles)) break;
+      if (overlaps(body, candidates)) break;
       rest = d;
     }
     return { status: 'ok', restY: y + rest };

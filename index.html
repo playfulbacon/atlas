@@ -28,17 +28,17 @@
 
     <div id="tray" class="tray hidden">
       <div class="tray-row">
-        <div id="trayCard" class="tray-card">
-          <img id="trayImg" class="tray-img" alt="" draggable="false" />
-          <div class="tray-text">
-            <div id="trayName" class="tray-name">&nbsp;</div>
-            <div id="trayWeight" class="tray-weight">&nbsp;</div>
+        <div id="trayCard" class="stage">
+          <div class="stage-pedestal">
+            <img id="trayImg" class="stage-img" alt="" draggable="false" />
           </div>
+          <div id="trayName" class="stage-name">&nbsp;</div>
+          <div id="trayWeight" class="stage-weight">&nbsp;</div>
         </div>
         <button id="rotateBtn" class="rotate-btn" type="button" aria-label="Rotate 15 degrees">⟳</button>
       </div>
       <p class="tray-hint">
-        <span class="hint-drag">Drag it onto the pile</span>
+        <span class="hint-drag">Drag anywhere to steer it</span>
         <span class="hint-rotate">Two fingers to rotate · scroll or Q / E on desktop</span>
       </p>
     </div>
@@ -57,8 +57,9 @@
           <img src="./assets/objects/t-rex.svg" alt="" />
         </div>
         <ul class="rules">
-          <li>Drag each object onto his back. It must land in free space.</li>
+          <li>Grab the object below — it steps out onto his back. Drag to steer it.</li>
           <li>The shadow shows exactly where it will come to rest.</li>
+          <li>It must land in free space, with something underneath it.</li>
           <li>Two fingers rotate. So does the scroll wheel, or Q&nbsp;/&nbsp;E.</li>
           <li>Every object is a point. If the pile falls, that's the run.</li>
         </ul>

@@ -121,55 +121,85 @@ body {
   gap: 10px;
 }
 
-.tray-card {
+/* The next object gets a small stage: featured large, named underneath. */
+.stage {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
-  min-width: 210px;
-  max-width: 78vw;
-  padding: 9px 18px 9px 11px;
+  gap: 1px;
+  padding: 10px 22px 12px;
   background: var(--paper);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  transition: opacity 0.18s ease, transform 0.18s ease;
+  max-width: 74vw;
+  transition: opacity 0.16s ease, transform 0.16s ease;
 }
 
-.tray-img {
-  width: 46px;
-  height: 46px;
+.stage-pedestal {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 96px;
+  height: 88px;
+  margin-bottom: 4px;
+}
+
+/* Soft contact shadow, so the object reads as sitting on something. */
+.stage-pedestal::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  width: 62px;
+  height: 9px;
+  border-radius: 50%;
+  background: rgba(31, 27, 23, 0.16);
+  filter: blur(3px);
+}
+
+.stage-img {
+  position: relative;
+  z-index: 1;
+  width: 84px;
+  height: 84px;
   object-fit: contain;
-  flex: none;
   user-select: none;
   -webkit-user-drag: none;
+  transition: opacity 0.16s ease, transform 0.16s ease;
 }
 
-.tray-text {
-  min-width: 0;
-}
-
-.tray-name {
-  font-size: 15px;
+.stage-name {
+  font-size: 16px;
   font-weight: 700;
   line-height: 1.2;
+  text-align: center;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 100%;
 }
 
-.tray-weight {
+.stage-weight {
   font-size: 13px;
   font-weight: 600;
   color: var(--ink-soft);
   font-variant-numeric: tabular-nums;
 }
 
-/* While dragging, the card steps aside — the object is out on the canvas. */
-.tray.is-dragging .tray-card {
-  opacity: 0.28;
-  transform: translateY(6px) scale(0.96);
+/* Dragging: the object has left the stage, so leave an empty socket behind. */
+.tray.is-dragging .stage-img {
+  opacity: 0;
+  transform: translateY(-10px) scale(0.9);
 }
 
-.tray-card.is-empty {
+.tray.is-dragging .stage-pedestal::after {
+  opacity: 0.4;
+}
+
+.tray.is-dragging .stage {
+  opacity: 0.75;
+}
+
+.stage.is-empty {
   opacity: 0.35;
 }
 
@@ -410,6 +440,8 @@ body {
 }
 
 @media (max-width: 380px) {
-  .tray-card { min-width: 0; }
-  .tray-img { width: 38px; height: 38px; }
+  .stage { padding: 8px 16px 10px; }
+  .stage-pedestal { width: 78px; height: 70px; }
+  .stage-img { width: 68px; height: 68px; }
+  .stage-name { font-size: 15px; }
 }

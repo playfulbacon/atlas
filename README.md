@@ -2,8 +2,8 @@
 
 A silly physics game about balancing the world's junk on the back of a very
 patient titan. Objects arrive one at a time — a traffic pylon, a refrigerator,
-a bathtub, an unrequested accordion, eventually the Sun — and you drag each one
-onto the flat shelf made by Atlas' back and raised hands. Every object placed is
+a bathtub, an unrequested accordion, eventually the Sun — and you steer each
+one onto the shelf made by Atlas' back and raised hands. Every object placed is
 a point. When the pile falls over, that's the run.
 
 **There is no build step.** The repo root *is* the site: `index.html` loads
@@ -40,8 +40,11 @@ files you actually wrote.
 
 ## How it plays
 
-- **Drag** the object from the tray onto the pile. It does not collide with
-  anything while you hold it.
+- **Grab** the object on its stage at the bottom. It steps out onto Atlas' back
+  immediately, just clear of the pile — you never drag it up there yourself.
+- **Steer** it from wherever your hand already is: only the *movement* of the
+  pointer counts, one-to-one in screen pixels, so the object is never hidden
+  under your finger. It collides with nothing while you hold it.
 - The **shadow** shows exactly where it will come to rest. Placement snaps to
   that shadow, so what you preview is what you get.
 - **Two fingers** rotate on touch. Scroll wheel, `Q`/`E` or `←`/`→` on desktop,
@@ -79,7 +82,7 @@ Field reference:
 | field | meaning |
 | --- | --- |
 | `id` | unique slug; also the artwork filename |
-| `name` | shown in the tray |
+| `name` | shown on the stage |
 | `weight` | kilograms, for comedy. Drives the score readout and, heavily compressed, the physics density |
 | `size` | longest visible dimension in world units. Atlas' platform is 400 wide |
 | `tier` | 1 (pocket junk) … 6 (celestial bodies). A tier unlocks every 7 placements |
@@ -97,6 +100,7 @@ does not turn the pile beneath it into soup.
 | `src/physics.js` | Matter.js world, body construction, drop projection |
 | `src/camera.js` | framing — keeps guaranteed empty space above the pile |
 | `src/atlas.js` | Atlas himself, drawn in canvas vectors |
+| `src/ui.js` | HUD, the object stage, overlays, mass formatting |
 | `src/render.js` | sky, clouds, stars, sprites, landing shadow |
 | `src/input.js` | one-finger drag, two-finger rotate, wheel and keys |
 | `src/game.js` | run state, placement rules, topple detection |

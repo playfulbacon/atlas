@@ -64,6 +64,9 @@ export class Game {
   recent = [];
   /** @type {Held | null} */
   held = null;
+  /** Screen point the drag began at, and the world point the object began at. */
+  /** @type {{ screen: import('./types.js').Vec, world: import('./types.js').Vec } | null} */
+  dragAnchor = null;
   time = 0;
   accumulator = 0;
   lastFrame = 0;
@@ -109,6 +112,7 @@ export class Game {
     this.totalWeight = 0;
     this.recent = [];
     this.held = null;
+    this.dragAnchor = null;
     this.time = 0;
     this.phase = 'playing';
     this.input.reset();
@@ -211,29 +215,41 @@ export class Game {
     this.camera.update(dt);
   }
 
-  /** Follow the pointer, then work out where the object would land. */
+  /**
+   * The object is steered, not carried. Grabbing it sends it straight to the
+   * top of the pile; after that the pointer contributes only its *movement*, so
+   * you never have to drag your hand all the way up the screen — and the object
+   * is never hidden under your finger.
+   */
   updateHeld() {
     const held = this.held;
     if (!held) return;
     this.deps.ui.setDragging(this.input.dragging);
     if (!this.input.dragging) {
+      this.dragAnchor = null;
       held.restY = null;
       held.valid = false;
       return;
     }
 
-    const onScreenSize = held.def.size * this.camera.scale;
-    // On touch, hold the object clear of the finger covering it.
-    const lift = this.input.touchDrag ? Math.max(56, onScreenSize * 0.65) : 0;
-    const world = this.camera.screenToWorld({
-      x: this.input.pointer.x,
-      y: this.input.pointer.y - lift,
-    });
+    if (!this.dragAnchor) {
+      this.dragAnchor = {
+        screen: { x: this.input.grabPoint.x, y: this.input.grabPoint.y },
+        world: this.entryPosition(held.def.size),
+      };
+    }
+
+    // Screen-space 1:1, so a centimetre of finger is a centimetre of object at
+    // any zoom level.
+    const scale = this.camera.scale;
+    const anchor = this.dragAnchor;
+    const wantX = anchor.world.x + (this.input.pointer.x - anchor.screen.x) / scale;
+    const wantY = anchor.world.y + (this.input.pointer.y - anchor.screen.y) / scale;
 
     const bounds = this.camera.bounds();
     const margin = held.def.size * 0.5;
-    held.x = clamp(world.x, bounds.minX + margin, bounds.maxX - margin);
-    held.y = clamp(world.y, bounds.minY + margin, PLATFORM_TOP - margin - 6);
+    held.x = clamp(wantX, bounds.minX + margin, bounds.maxX - margin);
+    held.y = clamp(wantY, bounds.minY + margin, PLATFORM_TOP - margin - 6);
     held.angle = this.input.angle;
 
     const obstacles = [this.platform, ...this.placed];
@@ -274,6 +290,7 @@ export class Game {
     this.sfx.place(this.strain());
 
     this.held = null;
+    this.dragAnchor = null;
     this.deps.ui.setNext(null);
     void this.spawnNext();
   }
@@ -293,14 +310,31 @@ export class Game {
     this.input.enabled = false;
     this.input.reset();
     this.held = null;
+    this.dragAnchor = null;
     this.deps.ui.setDragging(false);
     this.sfx.crash();
   }
 
-  /** Camera keeps the pile framed with guaranteed empty room above it. */
-  frameCamera() {
+  /**
+   * Where an object appears when you first grab it: centred, just clear of the
+   * highest thing on the pile.
+   * @param {number} size
+   * @returns {import('./types.js').Vec}
+   */
+  entryPosition(size) {
+    return { x: 0, y: this.stackTop() - size * 0.5 - 26 };
+  }
+
+  /** @returns {number} highest occupied world y (most negative) */
+  stackTop() {
     let top = PLATFORM_TOP;
     for (const body of this.placed) top = Math.min(top, body.bounds.min.y);
+    return top;
+  }
+
+  /** Camera keeps the pile framed with guaranteed empty room above it. */
+  frameCamera() {
+    const top = this.stackTop();
 
     const nextSize = this.held?.def.size ?? 120;
     const headroom = Math.max(nextSize * 2.4, 340);

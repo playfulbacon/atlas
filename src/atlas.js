@@ -1,10 +1,10 @@
-import { GROUND_Y, PLATFORM_HALF } from './physics.js';
+import { GROUND_Y } from './physics.js';
 
 /**
- * Atlas is drawn, not simulated. The one rule: the top edge of this artwork is
- * the straight line y = 0 from −PLATFORM_HALF to +PLATFORM_HALF, which is
- * exactly the top of the static platform body. Hands, forearms and arched back
- * make one continuous flat shelf.
+ * Atlas is drawn, not simulated. The one rule: everything he holds things up
+ * with — both hands, both forearms, both upper arms and his shoulders — tops
+ * out at exactly y = 0 across the platform's full 400-unit width, which is the
+ * top surface of the static platform body.
  */
 
 const SKIN = '#e8b88a';
@@ -33,23 +33,43 @@ const FEET = [
 ];
 
 /**
- * Hands + forearms + arched shoulders, as one silhouette with a dead-flat top.
+ * Raised arms, built the same way as the legs: thick round-capped strokes,
+ * inked wide then filled narrow, with a real bend at the joint.
+ *
+ * The upper arm climbs diagonally from the shoulder to a bent elbow — that bend
+ * is what makes it read as an arm rather than a plank. From the elbow out, the
+ * forearm and palm are horizontal, and each sits exactly half its own width
+ * below y = 0 so its top edge lands flush on the platform surface. The elbow's
+ * round cap is wide enough to bridge the gap to the shoulders, so the shelf is
+ * unbroken from fingertip to fingertip even though the arm underneath is not.
+ * @type {Limb[]}
+ */
+const ARMS = [
+  { points: [[-60, 68], [-78, 44], [-98, 17]], width: 34 },
+  { points: [[-98, 15], [-168, 15]], width: 30 },
+  { points: [[-168, 17], [-184, 17]], width: 34 },
+  { points: [[60, 68], [78, 44], [98, 17]], width: 34 },
+  { points: [[98, 15], [168, 15]], width: 30 },
+  { points: [[168, 17], [184, 17]], width: 34 },
+];
+
+const ELBOW_X = 98;
+const WRIST_X = 168;
+
+/**
+ * Shoulders and upper back — the middle of the shelf, between the two arms.
+ * Its flat top hands off to each elbow cap at x = ±86.
  * @param {CanvasRenderingContext2D} ctx
  */
-function shelfPath(ctx) {
-  const w = PLATFORM_HALF;
+function shouldersPath(ctx) {
   ctx.beginPath();
-  ctx.moveTo(-w, 0);
-  ctx.lineTo(w, 0);
-  ctx.lineTo(w, 17);
-  ctx.bezierCurveTo(w, 23, w - 9, 25, w - 24, 25);
-  ctx.bezierCurveTo(160, 25, 149, 29, 136, 33);
-  ctx.bezierCurveTo(121, 38, 110, 47, 94, 51);
-  ctx.bezierCurveTo(70, 58, 40, 66, 0, 66);
-  ctx.bezierCurveTo(-40, 66, -70, 58, -94, 51);
-  ctx.bezierCurveTo(-110, 47, -121, 38, -136, 33);
-  ctx.bezierCurveTo(-149, 29, -160, 25, -(w - 24), 25);
-  ctx.bezierCurveTo(-w + 9, 25, -w, 23, -w, 17);
+  ctx.moveTo(-86, 0);
+  ctx.lineTo(86, 0);
+  ctx.lineTo(86, 15);
+  ctx.bezierCurveTo(84, 31, 70, 41, 50, 46);
+  ctx.bezierCurveTo(34, 50, 17, 52, 0, 52);
+  ctx.bezierCurveTo(-17, 52, -34, 50, -50, 46);
+  ctx.bezierCurveTo(-70, 41, -84, 31, -86, 15);
   ctx.closePath();
 }
 
@@ -137,15 +157,24 @@ export function drawAtlas(ctx, opts) {
 
   drawHead(ctx, strain, ink);
 
-  // The shelf goes on last so it sits cleanly over the neck and shoulders.
+  // Shoulders sit over the neck, then the arms lie in front of the shoulders.
   ctx.fillStyle = SKIN;
   ctx.strokeStyle = INK;
   ctx.lineWidth = ink;
-  shelfPath(ctx);
+  shouldersPath(ctx);
   ctx.fill();
   ctx.stroke();
 
-  drawShelfDetail(ctx, ink);
+  for (const pass of [0, 1]) {
+    ctx.strokeStyle = pass === 0 ? INK : SKIN;
+    for (const limb of ARMS) {
+      ctx.lineWidth = limb.width + (pass === 0 ? ink * 2 : 0);
+      limbPath(ctx, limb);
+      ctx.stroke();
+    }
+  }
+
+  drawArmDetail(ctx, ink);
   if (strain > 0.3) drawEffort(ctx, strain, time, ink);
 
   ctx.restore();
@@ -248,31 +277,48 @@ function drawHead(ctx, strain, ink) {
  * @param {CanvasRenderingContext2D} ctx
  * @param {number} ink
  */
-function drawShelfDetail(ctx, ink) {
+function drawArmDetail(ctx, ink) {
   ctx.strokeStyle = SKIN_SHADE;
   ctx.lineWidth = ink * 0.85;
   ctx.lineCap = 'round';
 
   for (const side of [-1, 1]) {
-    // Wrist and shoulder creases mark hand / forearm / back.
+    // Elbow, across the inside of the bend.
     ctx.beginPath();
-    ctx.moveTo(side * 172, 3);
-    ctx.quadraticCurveTo(side * 168, 15, side * 170, 24);
+    ctx.moveTo(side * (ELBOW_X + 4), 4);
+    ctx.quadraticCurveTo(side * (ELBOW_X - 6), 20, side * (ELBOW_X + 2), 34);
     ctx.stroke();
 
+    // Wrist.
     ctx.beginPath();
-    ctx.moveTo(side * 96, 3);
-    ctx.quadraticCurveTo(side * 90, 28, side * 94, 51);
+    ctx.moveTo(side * WRIST_X, 4);
+    ctx.quadraticCurveTo(side * (WRIST_X - 5), 16, side * WRIST_X, 28);
     ctx.stroke();
 
-    // Knuckles.
+    // Bicep line along the diagonal of the upper arm.
+    ctx.beginPath();
+    ctx.moveTo(side * 66, 64);
+    ctx.quadraticCurveTo(side * 80, 46, side * 92, 30);
+    ctx.stroke();
+
+    // Knuckles across the flat of the palm.
     ctx.beginPath();
     for (let i = 0; i < 3; i++) {
-      const x = side * (180 + i * 8);
+      const x = side * (172 + i * 8);
       ctx.moveTo(x, 3);
-      ctx.lineTo(x, 10);
+      ctx.lineTo(x, 11);
     }
     ctx.stroke();
+
+    // Thumb, tucked under the near edge of the palm.
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = ink;
+    ctx.beginPath();
+    ctx.moveTo(side * 162, 32);
+    ctx.quadraticCurveTo(side * 152, 40, side * 143, 34);
+    ctx.stroke();
+    ctx.strokeStyle = SKIN_SHADE;
+    ctx.lineWidth = ink * 0.85;
   }
 }
 

@@ -9,9 +9,9 @@ export class InputController {
   dragging = false;
   /** Latest primary-pointer position in CSS pixels, relative to the canvas. @type {Vec} */
   pointer = { x: 0, y: 0 };
+  /** Where this drag started. Movement is measured from here, not followed. @type {Vec} */
+  grabPoint = { x: 0, y: 0 };
   angle = 0;
-  /** True while a touch drives the drag, so the game can lift the object clear of the finger. */
-  touchDrag = false;
   enabled = true;
 
   /** @type {(() => void) | undefined} */
@@ -60,7 +60,6 @@ export class InputController {
   reset() {
     this.angle = 0;
     this.dragging = false;
-    this.touchDrag = false;
     this.primaryId = null;
     this.rotateId = null;
     this.pointers.clear();
@@ -85,8 +84,8 @@ export class InputController {
     if (this.primaryId === null) {
       this.primaryId = event.pointerId;
       this.pointer = p;
+      this.grabPoint = { x: p.x, y: p.y };
       this.dragging = true;
-      this.touchDrag = event.pointerType === 'touch';
     } else if (this.rotateId === null && event.pointerId !== this.primaryId) {
       this.rotateId = event.pointerId;
       this.rotateBaseline = this.spanAngle();
@@ -125,7 +124,6 @@ export class InputController {
       this.rotateId = null;
       if (this.dragging) {
         this.dragging = false;
-        this.touchDrag = false;
         this.onRelease?.();
       }
       // A finger still down becomes the new primary, so the drag can continue.
@@ -133,6 +131,7 @@ export class InputController {
       if (remaining && this.enabled) {
         this.primaryId = remaining.id;
         this.pointer = { x: remaining.x, y: remaining.y };
+        this.grabPoint = { x: remaining.x, y: remaining.y };
       }
     }
   };
