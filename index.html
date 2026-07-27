@@ -12,10 +12,7 @@
   <body>
     <canvas id="stage"></canvas>
 
-    <!-- Players, top left. Floating text, no platter. -->
-    <div id="players" class="players hidden"></div>
-
-    <!-- Pile totals, top right. Also floating. -->
+    <!-- Pile totals, top right. Floating text, no platter. -->
     <div id="totals" class="totals hidden">
       <div class="total">
         <span class="total-label">Objects</span>
@@ -27,8 +24,9 @@
       </div>
     </div>
 
-    <!-- Three offers. Drag one onto the pile; the other two grey out. -->
+    <!-- Three offers, with the table listed in a row above them. -->
     <div id="tray" class="tray hidden">
+      <div id="players" class="players"></div>
       <div class="slots" id="slots"></div>
       <p class="tray-hint">
         <span class="hint-drag">Drag one down onto the pile</span>
@@ -39,7 +37,7 @@
     <div id="toast" class="toast"></div>
 
     <div id="hud" class="hud hidden">
-      <button id="hudRestart" class="pill-btn" type="button">Restart</button>
+      <button id="hudRestart" class="pill-btn" type="button">New game</button>
       <button id="soundBtn" class="icon-btn" aria-label="Mute" type="button">🔊</button>
     </div>
 

@@ -21,6 +21,8 @@ const UNITS = [
 /** How many objects are on offer. Mirrors SLOT_COUNT in game.js. */
 const SLOTS = 3;
 const MAX_PLAYERS = 4;
+/** Long enough for Bellerophon, short enough to fit four across a phone. */
+const MAX_NAME = 14;
 
 /**
  * Kilograms into something readable, all the way up to stellar masses.
@@ -57,6 +59,7 @@ function significant(v) {
  * @property {(setup: { names: string[], carrier: CarrierDef }) => void} onStart
  * @property {() => void} onRestart
  * @property {(on: boolean) => void} onToggleSound
+ * @property {() => void} onLayout Fired when the tray changes height.
  */
 
 export class UI {
@@ -65,8 +68,9 @@ export class UI {
   lastTrayHeight = 190;
   lastHudHeight = 74;
 
-  /** Names chosen on the setup screen. */
-  names = [randomName(), randomName()];
+  /** Names chosen on the setup screen. Never two the same. */
+  /** @type {string[]} */
+  names = [];
   playerCount = 2;
   carrierIndex = 0;
 
@@ -100,6 +104,7 @@ export class UI {
       sound: /** @type {HTMLButtonElement} */ (byId('soundBtn')),
     };
 
+    this.fillNames(this.playerCount);
     this.buildSlots();
     this.buildCountRow();
     this.buildCarriers();
@@ -118,8 +123,16 @@ export class UI {
       handlers.onStart(this.setup());
     });
     byId('restartBtn').addEventListener('click', handlers.onRestart);
-    byId('hudRestart').addEventListener('click', handlers.onRestart);
+    // Mid-run, "New game" means a new game: back to who is playing.
+    byId('hudRestart').addEventListener('click', () => this.showTitle());
     byId('overSetupBtn').addEventListener('click', () => this.showTitle());
+
+    // The tray grows and shrinks on its own — a fourth player wraps the row, a
+    // long object name wraps a card. Whatever the camera reserves for it has to
+    // follow, so watch the element rather than only the window.
+    if (typeof ResizeObserver !== 'undefined') {
+      new ResizeObserver(() => handlers.onLayout()).observe(this.el.tray);
+    }
 
     this.el.sound.addEventListener('click', () => {
       this.soundOn = !this.soundOn;
@@ -131,13 +144,25 @@ export class UI {
 
   /** @returns {{ names: string[], carrier: CarrierDef }} */
   setup() {
-    return {
-      names: this.names.slice(0, this.playerCount),
-      carrier: CARRIERS[this.carrierIndex] ?? CARRIERS[0],
-    };
+    // A name typed and left mid-edit still has to be a name.
+    const names = this.names.slice(0, this.playerCount).map((name, i) => {
+      const typed = name.trim().slice(0, MAX_NAME);
+      return typed || `Player ${i + 1}`;
+    });
+    return { names, carrier: CARRIERS[this.carrierIndex] ?? CARRIERS[0] };
   }
 
   /* --------------------------------------------------------- setup screen */
+
+  /**
+   * Tops the roster up to `n` names, each one different from every name already
+   * on it — including any typed by hand, which is why it is a comparison and not
+   * just a fresh draw.
+   * @param {number} n
+   */
+  fillNames(n) {
+    while (this.names.length < n) this.names.push(randomName(this.names));
+  }
 
   buildCountRow() {
     for (let n = 1; n <= MAX_PLAYERS; n++) {
@@ -147,7 +172,7 @@ export class UI {
       btn.textContent = String(n);
       btn.addEventListener('click', () => {
         this.playerCount = n;
-        while (this.names.length < n) this.names.push(randomName(this.names));
+        this.fillNames(n);
         this.renderRoster();
       });
       this.el.countRow.append(btn);
@@ -167,9 +192,24 @@ export class UI {
       const dot = document.createElement('span');
       dot.className = `pip pip-${i}`;
 
-      const name = document.createElement('span');
+      const name = document.createElement('input');
+      name.type = 'text';
       name.className = 'roster-name';
-      name.textContent = this.names[i];
+      name.value = this.names[i];
+      name.maxLength = MAX_NAME;
+      name.autocomplete = 'off';
+      name.spellcheck = false;
+      name.setAttribute('aria-label', `Name for player ${i + 1}`);
+      name.addEventListener('input', () => { this.names[i] = name.value; });
+      // Blank it and you get a name back rather than an anonymous seat.
+      name.addEventListener('blur', () => {
+        const typed = name.value.trim().slice(0, MAX_NAME);
+        this.names[i] = typed || randomName(this.names.filter((_, j) => j !== i));
+        name.value = this.names[i];
+      });
+      name.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') name.blur();
+      });
 
       const reroll = document.createElement('button');
       reroll.type = 'button';
@@ -177,8 +217,8 @@ export class UI {
       reroll.textContent = '⤾';
       reroll.setAttribute('aria-label', `New name for player ${i + 1}`);
       reroll.addEventListener('click', () => {
-        this.names[i] = randomName(this.names);
-        name.textContent = this.names[i];
+        this.names[i] = randomName(this.names.filter((_, j) => j !== i));
+        name.value = this.names[i];
       });
 
       row.append(dot, name, reroll);
@@ -305,18 +345,20 @@ export class UI {
    */
   setPlayers(players, turn) {
     this.el.players.replaceChildren();
+    // A single player has nobody to take turns with; the row is just noise.
+    this.el.players.classList.toggle('hidden', players.length < 2);
     for (const [i, player] of players.entries()) {
-      const row = document.createElement('div');
-      row.className = `player${i === turn ? ' is-turn' : ''}`;
-      row.innerHTML = `<span class="pip pip-${i}"></span>`;
+      const seat = document.createElement('div');
+      seat.className = `player pip-${i}${i === turn ? ' is-turn' : ''}`;
+      seat.innerHTML = '<span class="pip"></span>';
       const name = document.createElement('span');
       name.className = 'player-name';
       name.textContent = player.name;
       const kg = document.createElement('span');
       kg.className = 'player-weight';
       kg.textContent = formatMass(player.weight);
-      row.append(name, kg);
-      this.el.players.append(row);
+      seat.append(name, kg);
+      this.el.players.append(seat);
     }
   }
 
@@ -334,13 +376,14 @@ export class UI {
    * @returns {number}
    */
   stageHeight() {
-    // On phones the readouts drop below the offers, so take whichever reaches
-    // furthest down rather than assuming it is the tray.
-    const measured = Math.max(
-      this.el.tray.getBoundingClientRect().bottom,
-      this.el.players.getBoundingClientRect().bottom,
-      this.el.totals.getBoundingClientRect().bottom,
-    );
+    const tray = this.el.tray.getBoundingClientRect().bottom;
+    // Phones have no room to flank the offers, so the totals sit under them —
+    // published as a variable because only the layout knows how tall the tray
+    // ended up, and only the stylesheet knows whether it cares.
+    if (tray > 0) {
+      document.documentElement.style.setProperty('--tray-bottom', `${Math.round(tray)}px`);
+    }
+    const measured = Math.max(tray, this.el.totals.getBoundingClientRect().bottom);
     if (measured > 0) this.lastTrayHeight = measured + 12;
     return this.lastTrayHeight;
   }
@@ -369,7 +412,6 @@ export class UI {
     this.el.over.classList.add('hidden');
     this.el.hud.classList.add('hidden');
     this.el.tray.classList.add('hidden');
-    this.el.players.classList.add('hidden');
     this.el.totals.classList.add('hidden');
   }
 
@@ -379,7 +421,6 @@ export class UI {
     this.el.over.classList.add('hidden');
     this.el.hud.classList.remove('hidden');
     this.el.tray.classList.remove('hidden');
-    this.el.players.classList.remove('hidden');
     this.el.totals.classList.remove('hidden');
   }
 

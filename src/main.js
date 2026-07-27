@@ -11,6 +11,7 @@ const ui = new UI({
   // Restart replays the same table on the same carrier.
   onRestart: () => { if (lastSetup) void game.begin(lastSetup); },
   onToggleSound: (on) => game.setSound(on),
+  onLayout: () => game.resize(),
 });
 
 const game = new Game({ canvas, ui });

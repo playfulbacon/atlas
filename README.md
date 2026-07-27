@@ -69,7 +69,13 @@ files you actually wrote.
   Objects get larger as the score climbs.
 - **Turns** pass on every successful placement. The weight of the object goes on
   the placer's tally, whoever's it is when the tower finally goes; the scoreboard
-  ranks by weight carried and names who put the last one on.
+  ranks by weight carried and names who put the last one on. The table is listed
+  in a row above the offers, with whoever is up filled in in their own colour so
+  it reads at a glance across the room.
+- Everyone starts with a name from Greek myth, never two the same. Type over it
+  to use your own, or press ⤾ for another draw. **New game** mid-run goes back to
+  that setup screen; **Go again** on the results screen replays the same table on
+  the same carrier.
 
 ## Adding objects
 
@@ -131,7 +137,7 @@ does not turn the pile beneath it into soup.
 | `src/camera.js` | framing — keeps guaranteed empty space above the pile |
 | `src/carriers.js` | reads any carrier image column by column into a load-bearing skyline |
 | `src/carrier.js` | draws the chosen carrier, the ground, the sweat, and `?terrain` |
-| `src/names.js` | the Greek roster the re-roll button pulls from |
+| `src/names.js` | the Greek roster the re-roll button pulls from, minus whoever is taken |
 | `src/ui.js` | offers, player and pile readouts, setup and select screens, mass formatting |
 | `src/render.js` | sky, clouds, stars, sprites, landing shadow |
 | `src/input.js` | one-finger drag, two-finger rotate, wheel and keys |
