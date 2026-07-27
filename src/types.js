@@ -54,15 +54,25 @@
  */
 
 /**
+ * One straight stretch of a carrier's surface: the line objects rest on, and
+ * how far the ink goes on below it. A ledge is as thick as the thing that draws
+ * it, so the sky under a raised arm stays sky.
+ * @typedef {object} Ledge
+ * @property {Vec} a     Left end.
+ * @property {Vec} b     Right end.
+ * @property {number} base Bottom of the solid run beneath it.
+ */
+
+/**
  * A carrier measured and scaled into world units.
  * @typedef {object} Carrier
  * @property {CarrierDef} def
  * @property {HTMLImageElement} image
  * @property {number} groundY  Where its lowest point meets the ground.
- * @property {Vec[][]} surface
- *   The load-bearing skyline in world units, left to right, one run per
- *   disconnected piece of the artwork. This is every ledge, slope and hollow
- *   objects can come to rest on — not a single flat shelf.
+ * @property {Ledge[]} surface
+ *   The load-bearing skyline in world units, left to right. This is every
+ *   ledge, slope and hollow objects can come to rest on — not a single flat
+ *   shelf.
  * @property {{ x: number, y: number, w: number, h: number }} draw
  * @property {number} headY    Roughly where its top mass sits, for effects.
  */

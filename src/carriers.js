@@ -2,6 +2,7 @@ import { PLATFORM_WIDTH } from './physics.js';
 
 /** @typedef {import('./types.js').CarrierDef} CarrierDef */
 /** @typedef {import('./types.js').Carrier} Carrier */
+/** @typedef {import('./types.js').Ledge} Ledge */
 /** @typedef {import('./types.js').Vec} Vec */
 
 /**
@@ -15,9 +16,11 @@ import { PLATFORM_WIDTH } from './physics.js';
  * hands and the dip of his shoulders between them are three different places to
  * put something, and none of it is described anywhere but in the picture.
  *
- * Everything below the skyline is solid, which is why the reading is a skyline
- * and not an outline: nothing is ever placed from underneath, so the underside
- * of the art costs nothing to ignore and overhangs cannot swallow an object.
+ * Each stretch of skyline is only as thick as the ink beneath it — the top run
+ * of solid pixels in those columns, no further. A raised arm is a thin band you
+ * could rest a hat on, not a wall down to the floor, and the sky under it stays
+ * sky. Nothing is ever placed from underneath, so what is below the *second*
+ * surface in a column is not worth knowing.
  *
  * To add one: drop art in assets/carriers/ and add a row to
  * src/data/carriers.json. A `support` override is there for artwork whose top
@@ -126,7 +129,11 @@ async function build(def) {
     def,
     image,
     groundY: depth * scale,
-    surface: measured.skyline.map((run) => run.map(toWorld)),
+    surface: measured.skyline.map((ledge) => ({
+      a: toWorld(ledge.a),
+      b: toWorld(ledge.b),
+      base: (ledge.base - anchor.y) * scale,
+    })),
     draw: {
       x: -centre * scale,
       y: -anchor.y * scale,
@@ -174,13 +181,23 @@ function measure(image) {
     }
   }
 
+  // …and how far the ink goes on from there, so a surface is as thick as the
+  // thing that draws it and no thicker.
+  const bases = new Int32Array(w);
+  for (let x = 0; x < w; x++) {
+    if (tops[x] < 0) continue;
+    let y = tops[x];
+    while (y + 1 < h && solid(((y + 1) * w + x) * 4)) y++;
+    bases[x] = y + 1;
+  }
+
   if (top < 0) {
     // Blank artwork: give it one flat shelf so the game still runs.
     return {
       raster,
       support: { y: 0, left: 0, right: w },
       bottom: h,
-      skyline: [[{ x: 0, y: 0 }, { x: w, y: 0 }]],
+      skyline: [{ a: { x: 0, y: 0 }, b: { x: w, y: 0 }, base: h }],
     };
   }
 
@@ -198,26 +215,33 @@ function measure(image) {
 
   let left = solidLeft;
   let right = solidRight;
+  // The origin sits on the lowest surface the band had to reach for, not on the
+  // highest pixel in the picture. On a flat-topped carrier those are the same
+  // thing; on a figure with an arm in the air they are 250 units apart, and it
+  // is the shoulders that hold the pile up, not the fingertips.
+  let anchorY = top;
   let depth = Math.max(2, Math.round(h * SUPPORT_BAND));
   for (let attempt = 0; attempt < 6; attempt++) {
     const band = Math.min(h - 1, top + depth);
     left = w;
     right = -1;
+    anchorY = top;
     for (let x = 0; x < w; x++) {
       if (tops[x] < 0 || tops[x] > band) continue;
       if (x < left) left = x;
       if (x > right) right = x;
+      if (tops[x] > anchorY) anchorY = tops[x];
     }
     if (right - left >= wanted) break;
     depth *= 2.2;
   }
-  if (right <= left) { left = 0; right = w; }
+  if (right <= left) { left = 0; right = w; anchorY = top; }
 
   return {
     raster,
-    support: { y: top, left, right },
+    support: { y: anchorY, left, right },
     bottom: bottom + 1,
-    skyline: skylineFrom(tops, raster),
+    skyline: skylineFrom(tops, bases, raster),
   };
 }
 
@@ -273,17 +297,21 @@ function near(data, a, b) {
 }
 
 /**
- * Turns the per-column heights into as few line segments as will still describe
- * the same silhouette. Empty columns break it into separate runs, so a carrier
+ * Turns the per-column heights into as few ledges as will still describe the
+ * same silhouette. Empty columns break the scan into separate runs, so a carrier
  * made of two disconnected pieces gets two surfaces rather than one that bridges
  * the gap between them.
  *
+ * Each ledge takes the *deepest* ink under the columns it spans, so simplifying
+ * the top of a surface can only ever make it thicker — never open a hole in it.
+ *
  * @param {Int32Array} tops
+ * @param {Int32Array} bases
  * @param {{ w: number, h: number }} raster
- * @returns {Vec[][]}
+ * @returns {Ledge[]}
  */
-function skylineFrom(tops, raster) {
-  /** @type {Vec[][]} */
+function skylineFrom(tops, bases, raster) {
+  /** @type {Array<{ points: Vec[], bases: number[] }>} */
   const runs = [];
   const minRun = Math.max(3, Math.round(raster.w * MIN_RUN));
 
@@ -291,44 +319,61 @@ function skylineFrom(tops, raster) {
     if (tops[x] < 0) continue;
     const start = x;
     /** @type {Vec[]} */
-    const run = [];
+    const points = [];
+    /** @type {number[]} */
+    const depths = [];
     while (x < raster.w && tops[x] >= 0) {
-      run.push({ x: x + 0.5, y: tops[x] });
+      points.push({ x: x + 0.5, y: tops[x] });
+      depths.push(bases[x]);
       x++;
     }
-    if (x - start >= minRun) runs.push(run);
+    if (x - start >= minRun) runs.push({ points, bases: depths });
   }
   if (!runs.length) return [];
 
   // Simplify, loosening the tolerance until the whole skyline fits the budget.
-  // Each vertex becomes a static collision quad, so this is a real cost.
+  // Each ledge becomes a static collision slab, so this is a real cost.
   let tolerance = raster.w * SKYLINE_TOLERANCE;
-  let simplified = runs.map((run) => simplify(run, tolerance));
-  for (let attempt = 0; attempt < 8 && countPoints(simplified) > MAX_SKYLINE_POINTS; attempt++) {
+  let kept = runs.map((run) => simplify(run.points, tolerance));
+  for (let attempt = 0; attempt < 8 && count(kept) > MAX_SKYLINE_POINTS; attempt++) {
     tolerance *= 1.6;
-    simplified = runs.map((run) => simplify(run, tolerance));
+    kept = runs.map((run) => simplify(run.points, tolerance));
   }
-  return simplified;
+
+  /** @type {Ledge[]} */
+  const ledges = [];
+  runs.forEach((run, r) => {
+    const indices = kept[r];
+    for (let i = 0; i < indices.length - 1; i++) {
+      const from = indices[i];
+      const to = indices[i + 1];
+      let base = 0;
+      for (let c = from; c <= to; c++) base = Math.max(base, run.bases[c]);
+      ledges.push({ a: run.points[from], b: run.points[to], base });
+    }
+  });
+  return ledges;
 }
 
 /**
- * @param {Vec[][]} runs
+ * @param {number[][]} runs
  * @returns {number}
  */
-function countPoints(runs) {
+function count(runs) {
   let n = 0;
   for (const run of runs) n += run.length;
   return n;
 }
 
 /**
- * Douglas–Peucker, iterative so a 512-point run cannot blow the stack.
+ * Douglas–Peucker, iterative so a 512-point run cannot blow the stack. Returns
+ * the indices it kept, because the caller has a second array to sample.
  * @param {Vec[]} points
  * @param {number} tolerance
- * @returns {Vec[]}
+ * @returns {number[]}
  */
 function simplify(points, tolerance) {
-  if (points.length < 3) return points.slice();
+  if (points.length < 3) return points.map((_, i) => i);
   const keep = new Uint8Array(points.length);
   keep[0] = 1;
   keep[points.length - 1] = 1;
@@ -356,9 +401,9 @@ function simplify(points, tolerance) {
     }
   }
 
-  /** @type {Vec[]} */
+  /** @type {number[]} */
   const out = [];
-  for (let i = 0; i < points.length; i++) if (keep[i]) out.push(points[i]);
+  for (let i = 0; i < points.length; i++) if (keep[i]) out.push(i);
   return out;
 }
 

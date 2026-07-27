@@ -152,9 +152,7 @@ export class Game {
     for (const slab of this.terrain) Composite.remove(this.engine.world, slab);
     if (this.ground) Composite.remove(this.engine.world, this.ground);
 
-    this.terrain = carrier
-      ? createTerrain(carrier.surface, this.groundY)
-      : createPlatform();
+    this.terrain = carrier ? createTerrain(carrier.surface) : createPlatform();
     this.ground = createGround(this.groundY);
 
     Composite.add(this.engine.world, this.terrain);

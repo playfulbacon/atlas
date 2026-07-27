@@ -37,10 +37,10 @@ export const GROUND_MARGIN = 14;
 /** ...or it has been flung this far sideways. */
 export const TOPPLE_X = 2600;
 
-/** How far past the ground a terrain slab extends. Solid, not a shell. */
-const TERRAIN_SKIRT = 160;
-/** Terrain slabs narrower than this are dropped; Matter dislikes slivers. */
+/** Narrower than this and Matter is solving against a sliver; widen instead. */
 const MIN_TERRAIN_SPAN = 1.5;
+/** Thinner than this and a heavy pile could work its way through; deepen. */
+const MIN_TERRAIN_DEPTH = 46;
 
 /**
  * Compound bodies beyond this many parts get replaced with their convex hull.
@@ -83,42 +83,37 @@ export function createPlatform() {
 }
 
 /**
- * Builds the carrier's collision surface from its skyline: one solid slab under
- * every segment, dropping far enough that nothing can be shoved out underneath.
+ * Builds the carrier's collision surface from its skyline: one solid slab per
+ * ledge, as thick as the ink that drew it.
  *
  * Slabs rather than one traced polygon, because each is convex by construction
  * — no decomposition, no chance of a concave hull quietly filling in a hollow
  * that the artwork says you should be able to drop something into.
  *
- * @param {import('./types.js').Vec[][]} surface Skyline runs, in world units.
- * @param {number} groundY
+ * @param {import('./types.js').Ledge[]} surface Ledges in world units.
  * @returns {any[]}
  */
-export function createTerrain(surface, groundY) {
-  const floor = groundY + TERRAIN_SKIRT;
+export function createTerrain(surface) {
   /** @type {any[]} */
   const bodies = [];
-  for (const run of surface) {
-    for (let i = 0; i < run.length - 1; i++) {
-      const a = run[i];
-      const b = run[i + 1];
-      if (a.y >= floor || b.y >= floor) continue;
-      // A near-vertical segment would be a sliver Matter cannot solve against,
-      // so widen it instead of dropping it — overlapping static slabs are free,
-      // a gap in the surface is not.
-      const right = Math.max(b.x, a.x + MIN_TERRAIN_SPAN);
-      const quad = [
-        { x: a.x, y: a.y },
-        { x: right, y: b.y },
-        { x: right, y: floor },
-        { x: a.x, y: floor },
-      ];
-      // fromVertices re-centres on the polygon centroid, so hand it the very
-      // centroid it is going to compute and the slab lands where it was drawn.
-      const centre = Vertices.centre(quad);
-      const body = Bodies.fromVertices(centre.x, centre.y, [quad], { ...TERRAIN_OPTIONS }, false);
-      if (body && Number.isFinite(body.area) && body.area > 0) bodies.push(body);
-    }
+  for (const { a, b, base } of surface) {
+    // A near-vertical ledge would be a sliver Matter cannot solve against, so
+    // widen it instead of dropping it — overlapping static slabs are free, a
+    // gap in the surface is not. Likewise a hairline stroke gets a floor on its
+    // thickness, or a heavy pile would work its way through.
+    const right = Math.max(b.x, a.x + MIN_TERRAIN_SPAN);
+    const floor = Math.max(base, a.y + MIN_TERRAIN_DEPTH, b.y + MIN_TERRAIN_DEPTH);
+    const quad = [
+      { x: a.x, y: a.y },
+      { x: right, y: b.y },
+      { x: right, y: floor },
+      { x: a.x, y: floor },
+    ];
+    // fromVertices re-centres on the polygon centroid, so hand it the very
+    // centroid it is going to compute and the slab lands where it was drawn.
+    const centre = Vertices.centre(quad);
+    const body = Bodies.fromVertices(centre.x, centre.y, [quad], { ...TERRAIN_OPTIONS }, false);
+    if (body && Number.isFinite(body.area) && body.area > 0) bodies.push(body);
   }
   return bodies.length ? bodies : createPlatform();
 }

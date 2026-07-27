@@ -50,37 +50,35 @@ export function drawCarrier(ctx, opts) {
   ctx.restore();
 
   // Outside the tremble, because the collision surface does not tremble.
-  if (SHOW_TERRAIN) drawSkyline(ctx, carrier, groundY, scale);
+  if (SHOW_TERRAIN) drawSkyline(ctx, carrier, scale);
 }
 
 /**
  * @param {CanvasRenderingContext2D} ctx
  * @param {Carrier} carrier
- * @param {number} groundY
  * @param {number} scale
  */
-function drawSkyline(ctx, carrier, groundY, scale) {
+function drawSkyline(ctx, carrier, scale) {
   ctx.save();
-  for (const run of carrier.surface) {
-    if (run.length < 2) continue;
+  ctx.lineWidth = Math.max(2, 2 / scale);
+  for (const { a, b, base } of carrier.surface) {
     ctx.beginPath();
-    ctx.moveTo(run[0].x, run[0].y);
-    for (const p of run) ctx.lineTo(p.x, p.y);
-    ctx.lineTo(run[run.length - 1].x, groundY);
-    ctx.lineTo(run[0].x, groundY);
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.lineTo(b.x, base);
+    ctx.lineTo(a.x, base);
     ctx.closePath();
     ctx.fillStyle = 'rgba(224, 52, 44, 0.18)';
     ctx.fill();
-    ctx.strokeStyle = '#e0342c';
-    ctx.lineWidth = Math.max(2, 2 / scale);
+    ctx.strokeStyle = 'rgba(224, 52, 44, 0.45)';
     ctx.stroke();
 
-    ctx.fillStyle = '#e0342c';
-    for (const p of run) {
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, Math.max(3, 3 / scale), 0, Math.PI * 2);
-      ctx.fill();
-    }
+    // The line that actually bears weight, drawn solid over the slab.
+    ctx.beginPath();
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.strokeStyle = '#e0342c';
+    ctx.stroke();
   }
   ctx.restore();
 }
