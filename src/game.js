@@ -121,7 +121,7 @@ export class Game {
     this.deps.ui.showGame();
     this.deps.ui.setScore(0);
     this.deps.ui.setWeight(0);
-    // The tray is only measurable once it is on screen.
+    // The stage is only measurable once it is on screen.
     this.resize();
 
     this.frameCamera();
@@ -172,7 +172,8 @@ export class Game {
     this.camera.view = {
       width,
       height,
-      bottomInset: this.deps.ui.trayHeight(),
+      topInset: this.deps.ui.stageHeight(),
+      bottomInset: this.deps.ui.hudHeight(),
     };
   }
 
@@ -267,9 +268,7 @@ export class Game {
     if (!held.valid || held.restY === null) {
       this.sfx.reject();
       this.deps.ui.nudge();
-      this.deps.ui.toast(
-        held.restY === null && !held.valid ? 'Needs something underneath it' : 'No room there',
-      );
+      this.deps.ui.toast('Nothing underneath it');
       held.restY = null;
       return;
     }
@@ -339,8 +338,8 @@ export class Game {
     const nextSize = this.held?.def.size ?? 120;
     const headroom = Math.max(nextSize * 2.4, 340);
     const bottom = this.phase === 'over' || this.phase === 'toppling'
-      ? Math.max(GROUND_Y + 40, lowestOf(this.placed) + 60)
-      : GROUND_Y + 40;
+      ? Math.max(GROUND_Y + 12, lowestOf(this.placed) + 40)
+      : GROUND_Y + 12;
 
     this.camera.frame(top, bottom, headroom);
   }

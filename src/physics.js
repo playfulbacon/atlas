@@ -22,7 +22,7 @@ export const PLATFORM_HALF = PLATFORM_WIDTH / 2;
 export const PLATFORM_TOP = 0;
 export const PLATFORM_DEPTH = 30;
 /** Where Atlas is standing. Debris lands here; nothing may be *placed* here. */
-export const GROUND_Y = 250;
+export const GROUND_Y = 380;
 /**
  * Below the platform, above anything resting on the ground: a body whose centre
  * passes this line has unambiguously fallen off Atlas.
@@ -73,12 +73,16 @@ export function createGround() {
  * Comedic weights span 30 orders of magnitude; simulated ones cannot. Compress
  * hard so an anvil still feels heavier than a rubber duck without the solver
  * treating the stack below it as a liquid.
+ *
+ * The range is deliberately narrow (5x end to end). Wide mass ratios are the
+ * main source of jitter in a tall stack: the solver cannot settle a feather
+ * pinned under a locomotive, so the pile hums instead of sleeping.
  * @param {number} weightKg
  * @returns {number}
  */
 function densityFor(weightKg) {
-  const d = 0.0009 * Math.pow(Math.max(weightKg, 0.001), 0.22);
-  return Math.min(0.010, Math.max(0.0006, d));
+  const d = 0.0012 * Math.pow(Math.max(weightKg, 0.001), 0.16);
+  return Math.min(0.0045, Math.max(0.0009, d));
 }
 
 /**
@@ -95,10 +99,12 @@ export function createObjectBody(def, sprite, x, y, angle = 0) {
   const options = {
     friction: def.friction ?? 0.62,
     frictionStatic: 0.95,
-    restitution: def.restitution ?? 0.02,
+    restitution: def.restitution ?? 0,
     density: densityFor(def.weight),
     label: def.id,
     slop: 0.02,
+    // Settle and freeze quickly; a pile that never sleeps is a pile that jitters.
+    sleepThreshold: 26,
   };
 
   let body = Bodies.fromVertices(x, y, [scaled], options, false);
@@ -184,14 +190,28 @@ export function overlaps(body, obstacles) {
  * @param {number} y
  * @param {number} angle
  * @param {number} maxDrop
- * @returns {{ status: 'ok', restY: number } | { status: 'overlap' } | { status: 'nofloor' }}
+ * @returns {{ status: 'ok', restY: number } | { status: 'blocked' } | { status: 'nofloor' }}
  */
 export function projectDrop(body, obstacles, x, y, angle, maxDrop) {
   const originalAngle = body.angle;
   const originalPos = { x: body.position.x, y: body.position.y };
   try {
     setTransform(body, x, y, angle);
-    if (overlaps(body, obstacles)) return { status: 'overlap' };
+
+    // Holding the object *inside* the pile is allowed — you are aiming, not
+    // placing. Rise to the first clear spot and drop from there, so the shadow
+    // always shows a legal landing instead of the whole thing going red.
+    let startY = y;
+    if (overlaps(body, obstacles)) {
+      const climb = 7;
+      let cleared = false;
+      for (let d = climb; d <= maxDrop; d += climb) {
+        setTransform(body, x, y - d, angle);
+        if (!overlaps(body, obstacles)) { startY = y - d; cleared = true; break; }
+      }
+      if (!cleared) return { status: 'blocked' };
+    }
+    y = startY;
 
     const b = body.bounds;
     // Only obstacles that overlap horizontally can be hit on a vertical drop.

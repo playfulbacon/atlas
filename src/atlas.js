@@ -1,10 +1,14 @@
 import { GROUND_Y } from './physics.js';
 
 /**
- * Atlas is drawn, not simulated. The one rule: everything he holds things up
- * with — both hands, both forearms, both upper arms and his shoulders — tops
- * out at exactly y = 0 across the platform's full 400-unit width, which is the
- * top surface of the static platform body.
+ * Atlas is drawn, not simulated. He is hunched forward with the load riding on
+ * his upper back, arms hanging down and out to the elbows, forearms rising at
+ * his sides, and both palms turned inward at the top to meet his back.
+ *
+ * The one rule: the crown of his back and the flats of both palms sit at
+ * exactly y = 0 and together span the platform's full 400 units, which is the
+ * top surface of the static platform body. There is no slab — the back and the
+ * hands *are* the surface.
  */
 
 const SKIN = '#e8b88a';
@@ -16,74 +20,71 @@ const INK = '#1f1b17';
 /** @typedef {{ points: Array<[number, number]>, width: number }} Limb */
 
 /**
- * Thigh out to the knee, then shin back in — an angular, straining squat.
+ * A deep squat under the weight. His stance is wider than the load he carries,
+ * which is what stops the whole arrangement reading as a table.
  * @type {Limb[]}
  */
 const LEGS = [
-  { points: [[-48, 138], [-114, 190]], width: 34 },
-  { points: [[-114, 190], [-98, 238]], width: 28 },
-  { points: [[48, 138], [114, 190]], width: 34 },
-  { points: [[114, 190], [98, 238]], width: 28 },
+  { points: [[-66, 232], [-172, 300]], width: 44 },
+  { points: [[-172, 300], [-154, 366]], width: 36 },
+  { points: [[66, 232], [172, 300]], width: 44 },
+  { points: [[172, 300], [154, 366]], width: 36 },
 ];
 
 /** @type {Limb[]} */
 const FEET = [
-  { points: [[-100, 238], [-142, 238]], width: 22 },
-  { points: [[100, 238], [142, 238]], width: 22 },
+  { points: [[-158, 366], [-214, 366]], width: 28 },
+  { points: [[158, 366], [214, 366]], width: 28 },
 ];
 
 /**
- * Raised arms, built the same way as the legs: thick round-capped strokes,
- * inked wide then filled narrow, with a real bend at the joint.
- *
- * The upper arm climbs diagonally from the shoulder to a bent elbow — that bend
- * is what makes it read as an arm rather than a plank. From the elbow out, the
- * forearm and palm are horizontal, and each sits exactly half its own width
- * below y = 0 so its top edge lands flush on the platform surface. The elbow's
- * round cap is wide enough to bridge the gap to the shoulders, so the shelf is
- * unbroken from fingertip to fingertip even though the arm underneath is not.
+ * Arms reaching up and back. Upper arm drops from under the shoulder out to a
+ * low elbow, forearm climbs almost vertically at his side, then the palm turns
+ * inward along the top — half its own width below y = 0, so its flat lands
+ * exactly on the carrying surface and bridges from the hand to the back.
  * @type {Limb[]}
  */
 const ARMS = [
-  { points: [[-60, 68], [-78, 44], [-98, 17]], width: 34 },
-  { points: [[-98, 15], [-168, 15]], width: 30 },
-  { points: [[-168, 17], [-184, 17]], width: 34 },
-  { points: [[60, 68], [78, 44], [98, 17]], width: 34 },
-  { points: [[98, 15], [168, 15]], width: 30 },
-  { points: [[168, 17], [184, 17]], width: 34 },
+  { points: [[-84, 96], [-140, 104], [-176, 128]], width: 40 },
+  { points: [[-176, 128], [-188, 40]], width: 34 },
+  { points: [[-187, 13], [-132, 13]], width: 26 },
+  { points: [[84, 96], [140, 104], [176, 128]], width: 40 },
+  { points: [[176, 128], [188, 40]], width: 34 },
+  { points: [[187, 13], [132, 13]], width: 26 },
 ];
 
-const ELBOW_X = 98;
-const WRIST_X = 168;
+const ELBOW = { x: 176, y: 128 };
+const WRIST = { x: 186, y: 42 };
 
 /**
- * Shoulders and upper back — the middle of the shelf, between the two arms.
- * Its flat top hands off to each elbow cap at x = ±86.
+ * The hunched upper back: the load rides here. Its crown is flat from −124 to
+ * 124 and hands off to each palm at ±119.
  * @param {CanvasRenderingContext2D} ctx
  */
-function shouldersPath(ctx) {
+function backPath(ctx) {
   ctx.beginPath();
-  ctx.moveTo(-86, 0);
-  ctx.lineTo(86, 0);
-  ctx.lineTo(86, 15);
-  ctx.bezierCurveTo(84, 31, 70, 41, 50, 46);
-  ctx.bezierCurveTo(34, 50, 17, 52, 0, 52);
-  ctx.bezierCurveTo(-17, 52, -34, 50, -50, 46);
-  ctx.bezierCurveTo(-70, 41, -84, 31, -86, 15);
+  ctx.moveTo(-124, 0);
+  ctx.lineTo(124, 0);
+  ctx.bezierCurveTo(137, 3, 143, 17, 139, 34);
+  ctx.bezierCurveTo(133, 63, 116, 88, 92, 102);
+  ctx.bezierCurveTo(66, 118, 34, 126, 0, 126);
+  ctx.bezierCurveTo(-34, 126, -66, 118, -92, 102);
+  ctx.bezierCurveTo(-116, 88, -133, 63, -139, 34);
+  ctx.bezierCurveTo(-143, 17, -137, 3, -124, 0);
   ctx.closePath();
 }
 
 /**
- * Chest and belly, hanging below the shoulders.
+ * Chest and belly, hanging below the hunched back.
  * @param {CanvasRenderingContext2D} ctx
  */
 function torsoPath(ctx) {
   ctx.beginPath();
-  ctx.moveTo(-64, 36);
-  ctx.bezierCurveTo(-72, 74, -62, 112, -54, 132);
-  ctx.bezierCurveTo(-47, 150, -28, 160, 0, 160);
-  ctx.bezierCurveTo(28, 160, 47, 150, 54, 132);
-  ctx.bezierCurveTo(62, 112, 72, 74, 64, 36);
+  ctx.moveTo(-74, 96);
+  ctx.bezierCurveTo(-88, 142, -92, 196, -78, 222);
+  ctx.bezierCurveTo(-66, 244, -38, 256, 0, 256);
+  ctx.bezierCurveTo(38, 256, 66, 244, 78, 222);
+  ctx.bezierCurveTo(92, 196, 88, 142, 74, 96);
   ctx.closePath();
 }
 
@@ -150,18 +151,18 @@ export function drawAtlas(ctx, opts) {
   ctx.lineWidth = ink * 0.85;
   for (const side of [-1, 1]) {
     ctx.beginPath();
-    ctx.moveTo(side * 46, 70);
-    ctx.quadraticCurveTo(side * 40, 84, side * 27, 86);
+    ctx.moveTo(side * 66, 150);
+    ctx.quadraticCurveTo(side * 58, 172, side * 44, 178);
     ctx.stroke();
   }
 
   drawHead(ctx, strain, ink);
 
-  // Shoulders sit over the neck, then the arms lie in front of the shoulders.
+  // The back goes over the neck, then the arms come round in front of it.
   ctx.fillStyle = SKIN;
   ctx.strokeStyle = INK;
   ctx.lineWidth = ink;
-  shouldersPath(ctx);
+  backPath(ctx);
   ctx.fill();
   ctx.stroke();
 
@@ -206,23 +207,23 @@ function drawGround(ctx, style, ink) {
  */
 function drawHead(ctx, strain, ink) {
   ctx.save();
-  ctx.translate(0, 106);
+  ctx.translate(0, 142);
   ctx.strokeStyle = INK;
   ctx.lineWidth = ink;
 
   // Beard first, so the face sits on top of it.
   ctx.fillStyle = HAIR;
   ctx.beginPath();
-  ctx.moveTo(-23, 6);
-  ctx.bezierCurveTo(-26, 24, -14, 34, 0, 34);
-  ctx.bezierCurveTo(14, 34, 26, 24, 23, 6);
+  ctx.moveTo(-30, 26);
+  ctx.bezierCurveTo(-34, 46, -18, 58, 0, 58);
+  ctx.bezierCurveTo(18, 58, 34, 46, 30, 26);
   ctx.closePath();
   ctx.fill();
   ctx.stroke();
 
   ctx.fillStyle = SKIN;
   ctx.beginPath();
-  ctx.arc(0, 0, 26, 0, Math.PI * 2);
+  ctx.arc(0, 0, 40, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
 
@@ -232,11 +233,11 @@ function drawHead(ctx, strain, ink) {
   for (const side of [-1, 1]) {
     ctx.beginPath();
     if (squeeze < 0.5) {
-      ctx.arc(side * 11, -1, 6.5, Math.PI * 0.15, Math.PI * 0.85);
+      ctx.arc(side * 17, -2, 10, Math.PI * 0.15, Math.PI * 0.85);
     } else {
-      ctx.moveTo(side * 11 - 6.5, 2);
-      ctx.lineTo(side * 11, -5);
-      ctx.lineTo(side * 11 + 6.5, 2);
+      ctx.moveTo(side * 17 - 10, 3);
+      ctx.lineTo(side * 17, -8);
+      ctx.lineTo(side * 17 + 10, 3);
     }
     ctx.stroke();
   }
@@ -244,28 +245,28 @@ function drawHead(ctx, strain, ink) {
   // Brow lines when it really starts to hurt.
   if (strain > 0.55) {
     ctx.beginPath();
-    ctx.moveTo(-18, -16); ctx.lineTo(-6, -12);
-    ctx.moveTo(18, -16); ctx.lineTo(6, -12);
+    ctx.moveTo(-28, -13); ctx.lineTo(-9, -6);
+    ctx.moveTo(28, -13); ctx.lineTo(9, -6);
     ctx.stroke();
   }
 
   // Mouth: calm line, then a gritted grimace.
   if (strain < 0.35) {
     ctx.beginPath();
-    ctx.moveTo(-7, 15);
-    ctx.quadraticCurveTo(0, 18, 7, 15);
+    ctx.moveTo(-11, 19);
+    ctx.quadraticCurveTo(0, 24, 11, 19);
     ctx.stroke();
   } else {
-    const w = 8 + strain * 4;
+    const w = 12 + strain * 6;
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
-    ctx.rect(-w, 10, w * 2, 8);
+    ctx.rect(-w, 11, w * 2, 12);
     ctx.fill();
     ctx.stroke();
     ctx.beginPath();
     for (let i = -1; i <= 1; i++) {
-      ctx.moveTo((i * w) / 2, 10);
-      ctx.lineTo((i * w) / 2, 18);
+      ctx.moveTo((i * w) / 2, 11);
+      ctx.lineTo((i * w) / 2, 23);
     }
     ctx.stroke();
   }
@@ -278,48 +279,63 @@ function drawHead(ctx, strain, ink) {
  * @param {number} ink
  */
 function drawArmDetail(ctx, ink) {
-  ctx.strokeStyle = SKIN_SHADE;
-  ctx.lineWidth = ink * 0.85;
   ctx.lineCap = 'round';
 
   for (const side of [-1, 1]) {
-    // Elbow, across the inside of the bend.
+    ctx.strokeStyle = SKIN_SHADE;
+    ctx.lineWidth = ink * 0.85;
+
+    // Elbow, across the outside of the bend.
     ctx.beginPath();
-    ctx.moveTo(side * (ELBOW_X + 4), 4);
-    ctx.quadraticCurveTo(side * (ELBOW_X - 6), 20, side * (ELBOW_X + 2), 34);
+    ctx.moveTo(side * (ELBOW.x - 18), ELBOW.y - 4);
+    ctx.quadraticCurveTo(side * (ELBOW.x + 2), ELBOW.y + 6, side * (ELBOW.x + 16), ELBOW.y - 6);
     ctx.stroke();
 
-    // Wrist.
+    // Wrist, where the forearm turns into the flat of the palm.
     ctx.beginPath();
-    ctx.moveTo(side * WRIST_X, 4);
-    ctx.quadraticCurveTo(side * (WRIST_X - 5), 16, side * WRIST_X, 28);
+    ctx.moveTo(side * (WRIST.x - 16), WRIST.y - 4);
+    ctx.quadraticCurveTo(side * WRIST.x, WRIST.y + 5, side * (WRIST.x + 14), WRIST.y - 6);
     ctx.stroke();
 
-    // Bicep line along the diagonal of the upper arm.
+    // Forearm line, following the climb.
     ctx.beginPath();
-    ctx.moveTo(side * 66, 64);
-    ctx.quadraticCurveTo(side * 80, 46, side * 92, 30);
+    ctx.moveTo(side * (ELBOW.x + 4), ELBOW.y - 14);
+    ctx.quadraticCurveTo(side * (ELBOW.x + 12), 90, side * (WRIST.x + 1), WRIST.y + 12);
     ctx.stroke();
 
-    // Knuckles across the flat of the palm.
+    // Fingers along the palm, pointing in toward his spine.
     ctx.beginPath();
-    for (let i = 0; i < 3; i++) {
-      const x = side * (172 + i * 8);
+    for (let i = 0; i < 4; i++) {
+      const x = side * (140 + i * 13);
       ctx.moveTo(x, 3);
-      ctx.lineTo(x, 11);
+      ctx.lineTo(x, 12);
     }
     ctx.stroke();
 
-    // Thumb, tucked under the near edge of the palm.
+    // Thumb, hooked under the near edge of the palm.
     ctx.strokeStyle = INK;
     ctx.lineWidth = ink;
     ctx.beginPath();
-    ctx.moveTo(side * 162, 32);
-    ctx.quadraticCurveTo(side * 152, 40, side * 143, 34);
+    ctx.moveTo(side * 136, 22);
+    ctx.quadraticCurveTo(side * 126, 30, side * 118, 24);
     ctx.stroke();
+
+    // Shoulder blade, so the back is not a blank dome.
     ctx.strokeStyle = SKIN_SHADE;
     ctx.lineWidth = ink * 0.85;
+    ctx.beginPath();
+    ctx.moveTo(side * 40, 18);
+    ctx.quadraticCurveTo(side * 74, 40, side * 84, 82);
+    ctx.stroke();
   }
+
+  // Spine, down the middle of the hunch.
+  ctx.strokeStyle = SKIN_SHADE;
+  ctx.lineWidth = ink * 0.85;
+  ctx.beginPath();
+  ctx.moveTo(0, 14);
+  ctx.lineTo(0, 104);
+  ctx.stroke();
 }
 
 /**
@@ -338,13 +354,13 @@ function drawEffort(ctx, strain, time, ink) {
   for (let i = 0; i < beads; i++) {
     const phase = (time * 0.7 + i * 0.41) % 1;
     const side = i % 2 === 0 ? -1 : 1;
-    const x = side * (34 + phase * 22);
-    const y = 86 + phase * 58;
+    const x = side * (52 + phase * 30);
+    const y = 120 + phase * 84;
     ctx.globalAlpha = Math.sin(phase * Math.PI) * 0.95;
     ctx.beginPath();
-    ctx.moveTo(x, y - 9);
-    ctx.bezierCurveTo(x + 6.5, y - 1, x + 6.5, y + 8, x, y + 8);
-    ctx.bezierCurveTo(x - 6.5, y + 8, x - 6.5, y - 1, x, y - 9);
+    ctx.moveTo(x, y - 13);
+    ctx.bezierCurveTo(x + 9, y - 1, x + 9, y + 11, x, y + 11);
+    ctx.bezierCurveTo(x - 9, y + 11, x - 9, y - 1, x, y - 13);
     ctx.fill();
     ctx.stroke();
   }

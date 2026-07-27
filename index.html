@@ -12,20 +12,6 @@
   <body>
     <canvas id="stage"></canvas>
 
-    <div id="hud" class="hud hidden">
-      <div class="stat">
-        <span class="stat-label">Objects</span>
-        <span class="stat-value" id="score">0</span>
-      </div>
-      <button id="soundBtn" class="icon-btn" aria-label="Mute" type="button">🔊</button>
-      <div class="stat stat-right">
-        <span class="stat-label">On his back</span>
-        <span class="stat-value" id="weight">0 kg</span>
-      </div>
-    </div>
-
-    <div id="toast" class="toast"></div>
-
     <div id="tray" class="tray hidden">
       <div class="tray-row">
         <div id="trayCard" class="stage">
@@ -43,6 +29,22 @@
       </p>
     </div>
 
+    <div id="toast" class="toast"></div>
+
+    <div id="hud" class="hud hidden">
+      <div class="stat">
+        <span class="stat-label">Objects</span>
+        <span class="stat-value" id="score">0</span>
+      </div>
+      <div class="hud-right">
+        <button id="soundBtn" class="icon-btn" aria-label="Mute" type="button">🔊</button>
+        <div class="stat stat-right">
+          <span class="stat-label">On his back</span>
+          <span class="stat-value" id="weight">0 kg</span>
+        </div>
+      </div>
+    </div>
+
     <div id="title" class="overlay">
       <div class="panel">
         <h1 class="logo">ATLAS</h1>
@@ -57,9 +59,9 @@
           <img src="./assets/objects/t-rex.svg" alt="" />
         </div>
         <ul class="rules">
-          <li>Grab the object below — it steps out onto his back. Drag to steer it.</li>
-          <li>The shadow shows exactly where it will come to rest.</li>
-          <li>It must land in free space, with something underneath it.</li>
+          <li>Grab the object up top — it steps onto his back. Drag to steer it down.</li>
+          <li>The shadow shows exactly where it will come to rest. Hold it wherever you like, even inside the pile.</li>
+          <li>It only needs something underneath it to land on.</li>
           <li>Two fingers rotate. So does the scroll wheel, or Q&nbsp;/&nbsp;E.</li>
           <li>Every object is a point. If the pile falls, that's the run.</li>
         </ul>

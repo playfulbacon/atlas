@@ -40,19 +40,21 @@ files you actually wrote.
 
 ## How it plays
 
-- **Grab** the object on its stage at the bottom. It steps out onto Atlas' back
-  immediately, just clear of the pile — you never drag it up there yourself.
+- **Grab** the object from its stage at the top of the screen. It steps onto
+  Atlas' back immediately, just clear of the pile, and you bring it down from
+  there — the direction the load is going anyway.
 - **Steer** it from wherever your hand already is: only the *movement* of the
   pointer counts, one-to-one in screen pixels, so the object is never hidden
   under your finger. It collides with nothing while you hold it.
-- The **shadow** shows exactly where it will come to rest. Placement snaps to
-  that shadow, so what you preview is what you get.
+- The **shadow** shows exactly where it will come to rest, and placement snaps
+  to it. You may hold the object anywhere — buried in the pile is fine; it
+  rises to the first clear spot and the shadow shows the landing from there.
+  The only refusal is having nothing underneath at all.
 - **Two fingers** rotate on touch. Scroll wheel, `Q`/`E` or `←`/`→` on desktop,
   and there is a rotate button for one-handed play.
-- Objects must land in **free space** with something underneath them. You cannot
-  overlap the pile, and you cannot place into thin air beside it.
 - The camera pulls back as the pile grows, so there is always room above it for
-  the next thing. Objects get larger as your score climbs.
+  the next thing, and Atlas stays planted at the bottom of the screen. Objects
+  get larger as your score climbs.
 
 ## Adding objects
 
@@ -99,7 +101,7 @@ does not turn the pile beneath it into soup.
 | `src/sprites.js` | rasterises art, traces collision outlines from pixels |
 | `src/physics.js` | Matter.js world, body construction, drop projection |
 | `src/camera.js` | framing — keeps guaranteed empty space above the pile |
-| `src/atlas.js` | Atlas himself, drawn in canvas vectors |
+| `src/atlas.js` | Atlas himself, drawn in canvas vectors. His back and palms *are* the platform surface |
 | `src/ui.js` | HUD, the object stage, overlays, mass formatting |
 | `src/render.js` | sky, clouds, stars, sprites, landing shadow |
 | `src/input.js` | one-finger drag, two-finger rotate, wheel and keys |

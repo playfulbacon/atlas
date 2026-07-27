@@ -1,5 +1,5 @@
 /** @typedef {import('./types.js').Vec} Vec */
-/** @typedef {{ width: number, height: number, bottomInset: number }} Viewport */
+/** @typedef {{ width: number, height: number, topInset: number, bottomInset: number }} Viewport */
 
 /** Never zoom in past this much visible world height — keeps early play calm. */
 const MIN_VIEW_HEIGHT = 760;
@@ -22,7 +22,7 @@ export class Camera {
   targetHalf = MIN_VIEW_HEIGHT / 2;
 
   /** @type {Viewport} */
-  view = { width: 1, height: 1, bottomInset: 0 };
+  view = { width: 1, height: 1, topInset: 0, bottomInset: 0 };
 
   get scale() {
     return this.view.height / (this.half * 2);
@@ -43,13 +43,17 @@ export class Camera {
     // …and any slack goes *above* the stack, never below Atlas' feet.
     const content = Math.max(floor, wanted);
 
-    // Reserve the tray strip so the stack is never hidden behind the UI.
-    const trayFraction = Math.min(0.32, this.view.bottomInset / Math.max(1, this.view.height));
-    const total = content / (1 - trayFraction);
+    // Reserve the stage strip at the top and the score strip at the bottom, so
+    // the pile is never behind the stage and Atlas' feet are never behind the
+    // score. Everything between the two lands in the band that is left.
+    const height = Math.max(1, this.view.height);
+    const stageBand = Math.min(0.3, this.view.topInset / height);
+    const scoreBand = Math.min(0.2, this.view.bottomInset / height);
+    const total = content / Math.max(0.3, 1 - stageBand - scoreBand);
 
-    const top = contentBottom - content;
     this.targetHalf = total / 2;
-    this.targetY = top + total / 2;
+    // Atlas sits just above the score strip, however tall the pile gets.
+    this.targetY = contentBottom + scoreBand * total - total / 2;
     this.targetX = 0;
   }
 

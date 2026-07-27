@@ -44,12 +44,12 @@ body {
 
 .hud {
   position: fixed;
-  top: 0;
+  bottom: 0;
   left: 0;
   right: 0;
-  padding: max(14px, env(safe-area-inset-top)) 16px 0;
+  padding: 0 16px calc(14px + var(--safe-bottom));
   display: flex;
-  align-items: flex-start;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 12px;
   pointer-events: none;
@@ -86,6 +86,13 @@ body {
   line-height: 1.15;
 }
 
+/* Sound sits with the weight readout, not stranded in the middle of Atlas. */
+.hud-right {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
 .icon-btn {
   pointer-events: auto;
   border: none;
@@ -102,12 +109,14 @@ body {
 
 /* --------------------------------------------------------------- Tray */
 
+/* The stage lives at the top: you pick the object up there and bring it down
+   onto the pile, which is the direction the load is going anyway. */
 .tray {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 0;
-  padding: 10px 16px calc(12px + var(--safe-bottom));
+  top: 0;
+  padding: calc(8px + env(safe-area-inset-top, 0px)) 16px 10px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -188,7 +197,7 @@ body {
 /* Dragging: the object has left the stage, so leave an empty socket behind. */
 .tray.is-dragging .stage-img {
   opacity: 0;
-  transform: translateY(-10px) scale(0.9);
+  transform: translateY(10px) scale(0.9);
 }
 
 .tray.is-dragging .stage-pedestal::after {
@@ -256,8 +265,8 @@ body {
 .toast {
   position: fixed;
   left: 50%;
-  bottom: calc(150px + var(--safe-bottom));
-  transform: translate(-50%, 8px);
+  top: 210px;
+  transform: translate(-50%, -8px);
   padding: 8px 16px;
   border-radius: 999px;
   background: rgba(31, 27, 23, 0.88);
@@ -439,9 +448,13 @@ body {
   overflow-wrap: anywhere;
 }
 
-@media (max-width: 380px) {
-  .stage { padding: 8px 16px 10px; }
-  .stage-pedestal { width: 78px; height: 70px; }
-  .stage-img { width: 68px; height: 68px; }
-  .stage-name { font-size: 15px; }
+/* Phones: a compact stage, so it does not eat the play area. */
+@media (max-width: 460px) {
+  .stage { padding: 7px 16px 9px; }
+  .stage-pedestal { width: 66px; height: 60px; margin-bottom: 2px; }
+  .stage-img { width: 58px; height: 58px; }
+  .stage-name { font-size: 14px; }
+  .stage-weight { font-size: 12px; }
+  .rotate-btn { width: 44px; height: 44px; font-size: 19px; }
+  .toast { top: 168px; }
 }

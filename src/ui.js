@@ -54,7 +54,8 @@ function significant(v) {
 export class UI {
   toastTimer = 0;
   soundOn = true;
-  lastTrayHeight = 132;
+  lastTrayHeight = 200;
+  lastHudHeight = 74;
 
   /** @param {UIHandlers} handlers */
   constructor(handlers) {
@@ -88,14 +89,25 @@ export class UI {
   }
 
   /**
-   * Height in CSS pixels that the tray occupies, so the camera can avoid it.
-   * The tray is display:none between runs, so hold on to the last real reading.
+   * Height in CSS pixels that the stage occupies at the top of the screen, so
+   * the camera can keep the pile clear of it. The stage is display:none between
+   * runs, so hold on to the last real reading.
    * @returns {number}
    */
-  trayHeight() {
+  stageHeight() {
     const measured = this.el.tray.getBoundingClientRect().height;
-    if (measured > 0) this.lastTrayHeight = measured + 16;
+    if (measured > 0) this.lastTrayHeight = measured + 12;
     return this.lastTrayHeight;
+  }
+
+  /**
+   * Height of the score strip along the bottom, so Atlas can stand clear of it.
+   * @returns {number}
+   */
+  hudHeight() {
+    const measured = this.el.hud.getBoundingClientRect().height;
+    if (measured > 0) this.lastHudHeight = measured + 10;
+    return this.lastHudHeight;
   }
 
   /** @param {number} score */
