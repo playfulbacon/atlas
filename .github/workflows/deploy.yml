@@ -2,7 +2,9 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    # Any branch deploys, so pushing is all it takes. Last push wins — the site
+    # always shows whichever branch was pushed most recently.
+    branches: ['**']
   # Lets you deploy a branch by hand from the Actions tab.
   workflow_dispatch:
 
