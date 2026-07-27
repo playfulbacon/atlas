@@ -1,4 +1,4 @@
-import { drawAtlas } from './atlas.js';
+import { drawCarrier } from './carrier.js';
 
 /** @typedef {import('./camera.js').Camera} Camera */
 /** @typedef {import('./types.js').ObjectDef} ObjectDef */
@@ -82,8 +82,10 @@ export class Renderer {
    * @param {HeldView | null} held
    * @param {number} strain
    * @param {number} time
+   * @param {import('./types.js').Carrier | null} carrier
+   * @param {number} groundY
    */
-  draw(camera, bodies, held, strain, time) {
+  draw(camera, bodies, held, strain, time, carrier, groundY) {
     const ctx = this.ctx;
     const { width, height } = camera.view;
     const altitude = clamp01(-(camera.y - camera.half) / SPACE_ALTITUDE);
@@ -107,7 +109,7 @@ export class Renderer {
     if (altitude > 0.4) this.drawStars(altitude, time, view);
     this.drawClouds(altitude, view);
 
-    drawAtlas(ctx, { strain, time, scale, style: sky });
+    drawCarrier(ctx, { carrier, strain, time, scale, groundY, style: sky });
 
     for (const body of bodies) this.drawBody(body);
 

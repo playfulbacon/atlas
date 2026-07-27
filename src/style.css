@@ -40,9 +40,88 @@ body {
   display: none !important;
 }
 
-/* ---------------------------------------------------------------- HUD */
+/* ------------------------------------------------- Floating readouts */
 
-/* Bottom bar: restart in the middle, sound tucked into the corner. */
+/* Players top left, pile totals top right. Read-only, so no platters —
+   just text with a hairline of shadow so it survives any sky colour. */
+
+.players,
+.totals {
+  position: fixed;
+  top: calc(10px + env(safe-area-inset-top, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  pointer-events: none;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.75);
+}
+
+.players { left: 14px; }
+.totals { right: 14px; text-align: right; }
+
+.player {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(31, 27, 23, 0.5);
+  transition: color 0.15s ease, opacity 0.15s ease;
+}
+
+/* Whose turn it is, said once and clearly. */
+.player.is-turn {
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.player-weight {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  opacity: 0.75;
+}
+
+.pip {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--seat);
+}
+
+.player.is-turn .pip {
+  box-shadow: 0 0 0 3px rgba(31, 27, 23, 0.15);
+}
+
+.pip-0 { --seat: #e8813a; }
+.pip-1 { --seat: #3f8fd0; }
+.pip-2 { --seat: #59a860; }
+.pip-3 { --seat: #b364b8; }
+
+.total {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.total-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.total-value {
+  font-size: 18px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------ Bottom bar */
+
 .hud {
   position: fixed;
   bottom: 0;
@@ -70,54 +149,12 @@ body {
   cursor: pointer;
 }
 
-.pill-btn:active {
-  transform: scale(0.97);
-}
-
-.hud .icon-btn {
-  position: absolute;
-  right: 16px;
-  bottom: calc(14px + var(--safe-bottom));
-}
-
-.stat {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  background: rgba(255, 253, 248, 0.82);
-  backdrop-filter: blur(8px);
-  border-radius: 12px;
-  padding: 7px 13px;
-  box-shadow: var(--shadow);
-}
-
-.stat-right {
-  align-items: flex-end;
-  text-align: right;
-}
-
-.stat-label {
-  white-space: nowrap;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-}
-
-.stat-value {
-  white-space: nowrap;
-  font-size: 20px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.15;
-}
+.pill-btn:active { transform: scale(0.97); }
 
 .icon-btn {
   pointer-events: auto;
   border: none;
-  background: rgba(255, 253, 248, 0.82);
-  backdrop-filter: blur(8px);
+  background: var(--paper);
   box-shadow: var(--shadow);
   border-radius: 12px;
   width: 38px;
@@ -125,18 +162,19 @@ body {
   font-size: 16px;
   cursor: pointer;
   line-height: 1;
+  position: absolute;
+  right: 16px;
+  bottom: calc(14px + var(--safe-bottom));
 }
 
-/* --------------------------------------------------------------- Tray */
+/* -------------------------------------------------------- Three offers */
 
-/* The stage lives at the top: you pick the object up there and bring it down
-   onto the pile, which is the direction the load is going anyway. */
 .tray {
   position: fixed;
   left: 0;
   right: 0;
   top: 0;
-  padding: calc(8px + env(safe-area-inset-top, 0px)) 16px 10px;
+  padding: calc(40px + env(safe-area-inset-top, 0px)) 12px 10px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -144,72 +182,60 @@ body {
   pointer-events: none;
 }
 
-/* Objects on the left of the stage, weight on the right. Equal side columns
-   so the stage stays dead centre however wide the weight readout grows. */
-.tray-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: center;
-  gap: 10px;
-  width: 100%;
+.slots {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 8px;
+  max-width: 100%;
 }
 
-.tray-row > .stat:first-child {
-  justify-self: end;
-}
-
-.tray-row > .stat:last-child {
-  justify-self: start;
-}
-
-/* The next object gets a small stage: featured large, named underneath. */
-.stage {
+.slot {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 1px;
-  padding: 10px 22px 12px;
+  width: 132px;
+  padding: 8px 10px 10px;
   background: var(--paper);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  min-width: 0;
   transition: opacity 0.16s ease, transform 0.16s ease;
 }
 
-.stage-pedestal {
+.slot-plinth {
   position: relative;
   display: grid;
   place-items: center;
-  width: 96px;
-  height: 88px;
-  margin-bottom: 4px;
+  width: 100%;
+  height: 62px;
+  margin-bottom: 3px;
 }
 
-/* Soft contact shadow, so the object reads as sitting on something. */
-.stage-pedestal::after {
+.slot-plinth::after {
   content: "";
   position: absolute;
   bottom: 0;
-  width: 62px;
-  height: 9px;
+  width: 46px;
+  height: 7px;
   border-radius: 50%;
   background: rgba(31, 27, 23, 0.16);
   filter: blur(3px);
 }
 
-.stage-img {
+.slot-img {
   position: relative;
   z-index: 1;
-  width: 84px;
-  height: 84px;
+  width: 58px;
+  height: 58px;
   object-fit: contain;
   user-select: none;
   -webkit-user-drag: none;
   transition: opacity 0.16s ease, transform 0.16s ease;
 }
 
-.stage-name {
-  font-size: 16px;
+.slot-name {
+  font-size: 13px;
   font-weight: 700;
   line-height: 1.2;
   text-align: center;
@@ -219,31 +245,32 @@ body {
   max-width: 100%;
 }
 
-.stage-weight {
-  font-size: 13px;
+.slot-weight {
+  font-size: 12px;
   font-weight: 600;
   color: var(--ink-soft);
   font-variant-numeric: tabular-nums;
 }
 
-/* Dragging: the object has left the stage, so leave an empty socket behind. */
-.tray.is-dragging .stage-img {
-  opacity: 0;
-  transform: translateY(10px) scale(0.9);
+/* One is chosen: it empties out as the object lifts away, and the other two
+   grey back so it is obvious which is in hand. */
+.tray.is-choosing .slot:not(.is-held) {
+  opacity: 0.32;
+  filter: grayscale(1);
 }
 
-.tray.is-dragging .stage-pedestal::after {
-  opacity: 0.4;
-}
+/* The chosen one stays lit — its art has simply lifted out of the plinth. */
+.slot.is-held { border-color: #2a2521; box-shadow: 0 6px 18px rgba(31, 27, 23, 0.16); }
+.slot.is-held .slot-img { opacity: 0; transform: translateY(10px) scale(0.9); }
 
-/* Fade the card right back while dragging, so the object is clearly visible
-   being lifted out of it rather than washed out behind white card stock. */
-.tray.is-dragging .stage {
-  opacity: 0.2;
-}
+.slot.is-empty .slot-img { opacity: 0; }
+.slot.is-empty { opacity: 0.4; }
 
-.stage.is-empty {
-  opacity: 0.35;
+.slot.is-fresh { animation: arrive 0.26s ease; }
+
+@keyframes arrive {
+  from { transform: translateY(-8px); opacity: 0.2; }
+  to { transform: none; opacity: 1; }
 }
 
 .tray-hint {
@@ -259,14 +286,9 @@ body {
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 
-.hint-rotate {
-  font-weight: 500;
-  opacity: 0.75;
-}
+.hint-rotate { font-weight: 500; opacity: 0.75; }
 
-.shake {
-  animation: shake 0.32s ease;
-}
+.shake { animation: shake 0.32s ease; }
 
 @keyframes shake {
   0%, 100% { transform: translateX(0); }
@@ -280,7 +302,7 @@ body {
 .toast {
   position: fixed;
   left: 50%;
-  top: 210px;
+  top: 232px;
   transform: translate(-50%, -8px);
   padding: 8px 16px;
   border-radius: 999px;
@@ -365,34 +387,6 @@ body {
   transform: rotate(6deg);
 }
 
-.rules {
-  margin: 0 0 22px;
-  padding: 0;
-  list-style: none;
-  text-align: left;
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-  font-size: 13.5px;
-  line-height: 1.45;
-}
-
-.rules li {
-  padding-left: 22px;
-  position: relative;
-}
-
-.rules li::before {
-  content: "";
-  position: absolute;
-  left: 4px;
-  top: 7px;
-  width: 7px;
-  height: 7px;
-  border-radius: 2px;
-  background: #f4801f;
-}
-
 .big-btn {
   width: 100%;
   padding: 15px 20px;
@@ -408,13 +402,8 @@ body {
   transition: transform 0.12s ease, background 0.12s ease;
 }
 
-.big-btn:hover {
-  background: #332c25;
-}
-
-.big-btn:active {
-  transform: scale(0.98);
-}
+.big-btn:hover { background: #332c25; }
+.big-btn:active { transform: scale(0.98); }
 
 .credit {
   margin: 16px 0 0;
@@ -423,9 +412,7 @@ body {
   color: rgba(31, 27, 23, 0.45);
 }
 
-.credit a {
-  color: inherit;
-}
+.credit a { color: inherit; }
 
 .over-title {
   margin: 0;
@@ -434,8 +421,9 @@ body {
 }
 
 .over-note {
-  margin: 7px 0 20px;
+  margin: 7px 0 16px;
   font-size: 14px;
+  line-height: 1.45;
   color: var(--ink-soft);
 }
 
@@ -463,19 +451,196 @@ body {
   overflow-wrap: anywhere;
 }
 
-/* Phones: a compact stage, so it does not eat the play area. */
+/* -------------------------------------------------- Setup + level select */
+
+.field-label {
+  margin: 20px 0 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.count-row {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.count-btn {
+  width: 46px;
+  height: 42px;
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: border-color 0.14s ease, color 0.14s ease, background 0.14s ease;
+}
+
+.count-btn.is-on {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.roster {
+  list-style: none;
+  margin: 0 0 22px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.roster-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px 7px 12px;
+  border-radius: 12px;
+  background: rgba(31, 27, 23, 0.045);
+}
+
+.roster-name {
+  flex: 1;
+  text-align: left;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.reroll-btn {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: var(--paper);
+  box-shadow: 0 1px 4px rgba(31, 27, 23, 0.16);
+  font-size: 16px;
+  line-height: 1;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.reroll-btn:active { transform: scale(0.92); }
+
+.carriers {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 16px 0 22px;
+}
+
+.carrier-card {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  grid-template-rows: auto auto;
+  align-items: center;
+  gap: 2px 14px;
+  padding: 10px 14px;
+  border: 2px solid var(--line);
+  border-radius: 14px;
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.14s ease, background 0.14s ease;
+}
+
+.carrier-card.is-on {
+  border-color: var(--ink);
+  background: rgba(31, 27, 23, 0.045);
+}
+
+.carrier-art {
+  grid-row: 1 / 3;
+  display: grid;
+  place-items: center;
+  height: 62px;
+}
+
+.carrier-art img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.carrier-name {
+  align-self: end;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.carrier-blurb {
+  align-self: start;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--ink-soft);
+}
+
+.text-btn {
+  margin-top: 10px;
+  border: none;
+  background: none;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ------------------------------------------------------------ Scoreboard */
+
+.scoreboard {
+  list-style: none;
+  margin: 4px 0 18px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.score-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: rgba(31, 27, 23, 0.045);
+  font-size: 14px;
+}
+
+.score-row.is-winner {
+  background: rgba(232, 129, 58, 0.16);
+  font-weight: 800;
+}
+
+.score-name { flex: 1; text-align: left; font-weight: 700; }
+.score-weight { font-variant-numeric: tabular-nums; font-weight: 700; }
+
 @media (max-width: 460px) {
-  .stage { padding: 7px 16px 9px; }
-  .stage-pedestal { width: 66px; height: 60px; margin-bottom: 2px; }
-  .stage-img { width: 58px; height: 58px; }
-  .stage-name { font-size: 14px; }
-  .stage-weight { font-size: 12px; }
-  /* Narrow screens: let each column take exactly what it needs and centre the
-     row, rather than forcing symmetric sides and clipping the weight. */
-  .tray-row { gap: 6px; grid-template-columns: auto auto auto; justify-content: center; }
-  .stage { max-width: 168px; }
-  .stat { padding: 6px 8px; }
-  .stat-value { font-size: 15px; }
-  .stat-label { font-size: 8px; letter-spacing: 0.05em; }
-  .toast { top: 168px; }
+  /* Phones: three offers still have to fit side by side. */
+  .slots { gap: 5px; }
+  .slot { width: 30vw; max-width: 118px; padding: 7px 6px 8px; }
+  .slot-plinth { height: 50px; }
+  .slot-img { width: 46px; height: 46px; }
+  .slot-name { font-size: 11.5px; }
+  .slot-weight { font-size: 11px; }
+  .tray { padding-top: calc(14px + env(safe-area-inset-top, 0px)); }
+  .hint-rotate { display: none; }
+  /* No room to flank the offers, so the readouts sit just under them. */
+  .players,
+  .totals { top: calc(150px + env(safe-area-inset-top, 0px)); }
+  .toast { top: calc(232px + env(safe-area-inset-top, 0px)); }
+  .player { font-size: 12.5px; gap: 5px; }
+  .total-value { font-size: 15px; }
+  .total-label { font-size: 9px; }
 }

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" width="640" height="360">
+  <g fill="#ffffff" stroke="#17181a" stroke-width="8" stroke-linejoin="round" stroke-linecap="round">
+    <!-- Legs, behind the shell. -->
+    <polygon points="150,214 206,214 214,300 152,300"/>
+    <polygon points="252,222 306,222 312,306 254,306"/>
+    <polygon points="338,222 392,222 398,306 340,306"/>
+    <polygon points="440,214 496,214 502,300 444,300"/>
+    <!-- Head and tail. -->
+    <polygon points="512,150 588,132 616,158 610,196 540,206 508,188"/>
+    <polygon points="132,168 78,158 58,182 84,202 134,196"/>
+    <!-- Shell: the flat of its back is what the load rests on. -->
+    <polygon points="120,44 520,44 560,110 546,196 486,238 154,238 94,196 80,110"/>
+  </g>
+  <g fill="none" stroke="#17181a" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+    <!-- Scutes. -->
+    <polyline points="196,46 178,150 214,232"/>
+    <polyline points="286,44 282,152 292,236"/>
+    <polyline points="376,44 380,152 372,236"/>
+    <polyline points="466,46 486,150 452,232"/>
+    <polyline points="98,132 546,132"/>
+    <!-- Eye. -->
+    <polyline points="574,158 590,158"/>
+  </g>
+</svg>

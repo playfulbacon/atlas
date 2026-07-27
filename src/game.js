@@ -10,12 +10,12 @@ import {
   createGround,
   createObjectBody,
   createPlatform,
-  GROUND_Y,
   PLATFORM_TOP,
   projectDrop,
+  toppleLine,
   TOPPLE_X,
-  TOPPLE_Y,
 } from './physics.js';
+import { loadCarrier } from './carriers.js';
 import { Renderer } from './render.js';
 import { loadSprite, preload } from './sprites.js';
 
@@ -24,8 +24,23 @@ import { loadSprite, preload } from './sprites.js';
 /** @typedef {import('./render.js').HeldView} HeldView */
 /** @typedef {'title' | 'playing' | 'toppling' | 'over'} Phase */
 
+/** @typedef {import('./types.js').Carrier} Carrier */
+/** @typedef {import('./types.js').CarrierDef} CarrierDef */
+/** @typedef {import('./types.js').Player} Player */
+
+/** How many objects are on offer at any moment. */
+export const SLOT_COUNT = 3;
+
+/**
+ * @typedef {object} Slot
+ * @property {ObjectDef} def
+ * @property {Sprite} sprite
+ * @property {any} body
+ */
+
 /**
  * @typedef {object} Held
+ * @property {number} slot Which of the three offers is in hand.
  * @property {ObjectDef} def
  * @property {Sprite} sprite
  * @property {any} body Built up front so overlap tests use the exact shape that will be placed.
@@ -62,6 +77,21 @@ export class Game {
   totalWeight = 0;
   /** @type {string[]} */
   recent = [];
+  /** Three objects on offer; the player picks one of them each turn. */
+  /** @type {Array<Slot | null>} */
+  slots = [null, null, null];
+  /** @type {Player[]} */
+  players = [];
+  /** Whose turn it is. */
+  turn = 0;
+  /** @type {Carrier | null} */
+  carrier = null;
+  /** Ground depth of the current carrier. */
+  groundY = 460;
+  /** @type {any} */
+  ground = null;
+  /** Set when a drag began somewhere that is not an object, so it is ignored. */
+  dragBlocked = false;
   /** @type {Held | null} */
   held = null;
   /** Screen point the drag began at, and the world point the object began at. */
@@ -71,6 +101,8 @@ export class Game {
   accumulator = 0;
   lastFrame = 0;
   collapseAt = 0;
+  /** Who placed the object that finished it off. */
+  lastPlacer = 0;
   dpr = 1;
 
   /** @param {{ canvas: HTMLCanvasElement, ui: import('./ui.js').UI }} deps */
@@ -82,7 +114,8 @@ export class Game {
     this.input.onRelease = () => this.release();
     this.input.enabled = false;
 
-    Composite.add(this.engine.world, [this.platform, createGround()]);
+    Composite.add(this.engine.world, this.platform);
+    this.setGround(this.groundY);
     this.resize();
     window.addEventListener('resize', () => this.resize());
     window.addEventListener('orientationchange', () => this.resize());
@@ -100,34 +133,63 @@ export class Game {
     this.sfx.enabled = on;
   }
 
-  async begin() {
-    // Clear the world back to just Atlas' platform.
+  /**
+   * @param {number} groundY
+   */
+  setGround(groundY) {
+    if (this.ground) Composite.remove(this.engine.world, this.ground);
+    this.groundY = groundY;
+    this.ground = createGround(groundY);
+    Composite.add(this.engine.world, this.ground);
+  }
+
+  /**
+   * @param {{ names: string[], carrier: CarrierDef }} setup
+   */
+  async begin(setup) {
     for (const body of this.placed) Composite.remove(this.engine.world, body);
     this.placed = [];
     this.score = 0;
     this.totalWeight = 0;
     this.recent = [];
+    this.slots = [null, null, null];
     this.held = null;
     this.dragAnchor = null;
+    this.dragBlocked = false;
     this.time = 0;
+    this.turn = 0;
+    this.players = setup.names.map((name) => ({ name, weight: 0, placed: 0 }));
     this.phase = 'playing';
     this.input.reset();
     this.input.enabled = true;
 
+    try {
+      this.carrier = await loadCarrier(setup.carrier);
+      this.setGround(this.carrier.groundY);
+    } catch {
+      // A missing picture should not end the run; the platform is still there.
+      this.carrier = null;
+    }
+
     this.deps.ui.showGame();
-    this.deps.ui.setScore(0);
-    this.deps.ui.setWeight(0);
-    // The stage is only measurable once it is on screen.
+    this.deps.ui.setPlayers(this.players, this.turn);
+    this.deps.ui.setTotals(0, 0);
+    // The slot row is only measurable once it is on screen.
     this.resize();
 
     this.frameCamera();
     this.camera.snap();
-    await this.spawnNext();
+    await Promise.all([this.fillSlot(0), this.fillSlot(1), this.fillSlot(2)]);
   }
 
-  /** @param {number} [attempt] */
-  async spawnNext(attempt = 0) {
-    const def = pickNext(this.score, this.recent);
+  /**
+   * Puts a fresh object into one of the three offers.
+   * @param {number} index
+   * @param {number} [attempt]
+   */
+  async fillSlot(index, attempt = 0) {
+    const taken = this.slots.filter(Boolean).map((s) => /** @type {Slot} */ (s).def.id);
+    const def = pickNext(this.score, [...this.recent, ...taken]);
     this.recent.push(def.id);
     if (this.recent.length > RECENT_MEMORY) this.recent.shift();
 
@@ -137,23 +199,13 @@ export class Game {
       sprite = await loadSprite(def);
     } catch {
       // Bad artwork should never end a run; just try a different object.
-      if (this.phase === 'playing' && attempt < 8) await this.spawnNext(attempt + 1);
+      if (this.phase === 'playing' && attempt < 8) await this.fillSlot(index, attempt + 1);
       return;
     }
     if (this.phase !== 'playing') return;
 
-    this.input.angle = 0;
-    this.held = {
-      def,
-      sprite,
-      body: createObjectBody(def, sprite, 0, -10_000),
-      x: 0,
-      y: -10_000,
-      angle: 0,
-      restY: null,
-      valid: false,
-    };
-    this.deps.ui.setNext(def);
+    this.slots[index] = { def, sprite, body: createObjectBody(def, sprite, 0, -10_000) };
+    this.deps.ui.setSlot(index, def);
   }
 
   /* ---------------------------------------------------------------- */
@@ -201,11 +253,13 @@ export class Game {
     if (this.phase === 'playing' && this.hasToppled()) this.collapse();
     if (this.phase === 'toppling' && this.time - this.collapseAt > 1.6) {
       this.phase = 'over';
-      this.deps.ui.showGameOver(
-        this.score,
-        this.totalWeight,
-        COLLAPSE_NOTES[Math.floor(Math.random() * COLLAPSE_NOTES.length)],
-      );
+      this.deps.ui.showGameOver({
+        players: this.players,
+        objects: this.score,
+        weight: this.totalWeight,
+        blame: this.players[this.lastPlacer]?.name ?? '',
+        note: COLLAPSE_NOTES[Math.floor(Math.random() * COLLAPSE_NOTES.length)],
+      });
     }
 
     this.frameCamera();
@@ -219,27 +273,40 @@ export class Game {
    * under your finger either.
    */
   updateHeld() {
-    const held = this.held;
-    if (!held) return;
-    this.deps.ui.setDragging(this.input.dragging);
     if (!this.input.dragging) {
       this.dragAnchor = null;
-      held.restY = null;
-      held.valid = false;
+      this.dragBlocked = false;
+      if (this.held) {
+        this.held = null;
+        this.deps.ui.setSelected(-1);
+      }
       return;
     }
 
-    if (!this.dragAnchor) {
+    // A drag only means something if it started on one of the three offers.
+    if (!this.held) {
+      if (this.dragBlocked) return;
+      const slot = this.deps.ui.slotAt(this.input.grabPoint);
+      const entry = slot >= 0 ? this.slots[slot] : null;
+      if (!entry) { this.dragBlocked = true; return; }
+
+      this.input.angle = 0;
+      this.held = {
+        slot, def: entry.def, sprite: entry.sprite, body: entry.body,
+        x: 0, y: 0, angle: 0, restY: null, valid: false,
+      };
       this.dragAnchor = {
         screen: { x: this.input.grabPoint.x, y: this.input.grabPoint.y },
-        world: this.camera.screenToWorld(this.deps.ui.stageAnchor()),
+        world: this.camera.screenToWorld(this.deps.ui.slotAnchor(slot)),
       };
+      this.deps.ui.setSelected(slot);
     }
 
+    const held = this.held;
     // Screen-space 1:1, so a centimetre of finger is a centimetre of object at
     // any zoom level.
     const scale = this.camera.scale;
-    const anchor = this.dragAnchor;
+    const anchor = /** @type {NonNullable<typeof this.dragAnchor>} */ (this.dragAnchor);
     const wantX = anchor.world.x + (this.input.pointer.x - anchor.screen.x) / scale;
     const wantY = anchor.world.y + (this.input.pointer.y - anchor.screen.y) / scale;
 
@@ -259,13 +326,13 @@ export class Game {
   release() {
     const held = this.held;
     if (!held || this.phase !== 'playing') return;
-    this.deps.ui.setDragging(false);
 
     if (!held.valid || held.restY === null) {
       this.sfx.reject();
-      this.deps.ui.nudge();
+      this.deps.ui.nudge(held.slot);
       this.deps.ui.toast('Nothing underneath it');
-      held.restY = null;
+      this.held = null;
+      this.deps.ui.setSelected(-1);
       return;
     }
 
@@ -280,20 +347,32 @@ export class Game {
 
     this.score += 1;
     this.totalWeight += held.def.weight;
-    this.deps.ui.setScore(this.score);
-    this.deps.ui.setWeight(this.totalWeight);
+
+    const player = this.players[this.turn];
+    if (player) {
+      player.weight += held.def.weight;
+      player.placed += 1;
+    }
+    // Whoever touched it last gets the blame if the pile goes over.
+    this.lastPlacer = this.turn;
+    this.turn = this.players.length ? (this.turn + 1) % this.players.length : 0;
+
+    this.deps.ui.setTotals(this.score, this.totalWeight);
+    this.deps.ui.setPlayers(this.players, this.turn);
     this.sfx.place(this.strain());
 
+    const slot = held.slot;
+    this.slots[slot] = null;
     this.held = null;
-    this.dragAnchor = null;
-    this.deps.ui.setNext(null);
-    void this.spawnNext();
+    this.deps.ui.setSelected(-1);
+    this.deps.ui.setSlot(slot, null);
+    void this.fillSlot(slot);
   }
 
   /** @returns {boolean} */
   hasToppled() {
     for (const body of this.placed) {
-      if (body.position.y > TOPPLE_Y) return true;
+      if (body.position.y > toppleLine(this.groundY)) return true;
       if (Math.abs(body.position.x) > TOPPLE_X) return true;
     }
     return false;
@@ -306,8 +385,15 @@ export class Game {
     this.input.reset();
     this.held = null;
     this.dragAnchor = null;
-    this.deps.ui.setDragging(false);
+    this.deps.ui.setSelected(-1);
     this.sfx.crash();
+  }
+
+  /** Biggest thing on offer, so the camera keeps room for whichever is taken. */
+  largestOffered() {
+    let size = 120;
+    for (const slot of this.slots) if (slot) size = Math.max(size, slot.def.size);
+    return size;
   }
 
   /** @returns {number} highest occupied world y (most negative) */
@@ -321,11 +407,11 @@ export class Game {
   frameCamera() {
     const top = this.stackTop();
 
-    const nextSize = this.held?.def.size ?? 120;
+    const nextSize = this.held?.def.size ?? this.largestOffered();
     const headroom = Math.max(nextSize * 2.4, 340);
     const bottom = this.phase === 'over' || this.phase === 'toppling'
-      ? Math.max(GROUND_Y + 12, lowestOf(this.placed) + 40)
-      : GROUND_Y + 12;
+      ? Math.max(this.groundY + 12, lowestOf(this.placed) + 40)
+      : this.groundY + 12;
 
     this.camera.frame(top, bottom, headroom);
   }
@@ -360,7 +446,9 @@ export class Game {
           }
         : null;
 
-    this.renderer.draw(this.camera, this.placed, view, this.strain(), this.time);
+    this.renderer.draw(
+      this.camera, this.placed, view, this.strain(), this.time, this.carrier, this.groundY,
+    );
     ctx.restore();
   }
 }

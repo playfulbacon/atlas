@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Generates assets/atlas.svg: a faceted line-art Atlas kneeling with both arms
+ * Generates assets/carriers/atlas.svg: a faceted line-art Atlas kneeling with both arms
  * raised, copied from the reference logo with the globe left off.
  *
  *   npm run atlas-art
@@ -147,8 +147,8 @@ ${FACETS.map((p) => `    <polyline points="${pts(p)}"/>`).join('\n')}
 `;
 
 await mkdir(path.join(ROOT, 'assets'), { recursive: true });
-await writeFile(path.join(ROOT, 'assets/atlas.svg'), svg);
+await writeFile(path.join(ROOT, 'assets/carriers/atlas.svg'), svg);
 
-console.log(`assets/atlas.svg  ${VIEW.w}x${VIEW.h}`);
+console.log(`assets/carriers/atlas.svg  ${VIEW.w}x${VIEW.h}`);
 console.log(`  support (tops of hands): y=${SUPPORT_Y}, x ${SUPPORT_LEFT}..${SUPPORT_RIGHT} (span ${SUPPORT_RIGHT - SUPPORT_LEFT})`);
 console.log(`  figure bottom: y=${BOTTOM}`);

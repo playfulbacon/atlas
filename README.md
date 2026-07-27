@@ -1,10 +1,15 @@
 # Atlas — Don't Drop It
 
 A silly physics game about balancing the world's junk on the back of a very
-patient titan. Objects arrive one at a time — a traffic pylon, a refrigerator,
-a bathtub, an unrequested accordion, eventually the Sun — and you steer each
-one onto the shelf made by Atlas' back and raised hands. Every object placed is
-a point. When the pile falls over, that's the run.
+patient titan. Three objects are on offer at any moment — a traffic pylon, a
+refrigerator, a bathtub, an unrequested accordion, eventually the Sun — and you
+steer one of them onto the shelf made by Atlas' back and raised hands. Every
+object placed is a point. When the pile falls over, that's the run.
+
+One to four players take turns, each carrying the weight they personally added,
+so the winner is whoever dared the most and got away with it. Atlas is only the
+default: you pick who holds the pile up on a select screen, and **any picture
+can be a carrier** — see [Carriers](#carriers).
 
 **There is no build step.** The repo root *is* the site: `index.html` loads
 `src/*.js` as native ES modules and the two physics libraries from `vendor/` as
@@ -40,9 +45,12 @@ files you actually wrote.
 
 ## How it plays
 
-- **Lift** the object out of its stage at the top of the screen. It appears
-  exactly where it was sitting — no teleporting — and you drag it down onto the
-  load, the direction it is going anyway.
+- **Three offers** sit at the top of the screen. Take hold of one and the other
+  two grey out; place it and a fresh object drops into the empty slot, so the
+  choice is always live and always three wide.
+- **Lift** the object out of its slot. It appears exactly where it was sitting
+  — no teleporting — and you drag it down onto the load, the direction it is
+  going anyway.
 - **Steer** it from wherever your hand already is: only the *movement* of the
   pointer counts, one-to-one in screen pixels, so the object is never hidden
   under your finger. It collides with nothing while you hold it.
@@ -53,8 +61,11 @@ files you actually wrote.
 - **Two fingers** rotate on touch. Scroll wheel, `Q`/`E` or `←`/`→` on desktop.
   `R` sets the angle back to zero.
 - The camera pulls back as the pile grows, so there is always room above it for
-  the next thing, and Atlas stays planted at the bottom of the screen. Objects
-  get larger as your score climbs.
+  the next thing, and the carrier stays planted at the bottom of the screen.
+  Objects get larger as the score climbs.
+- **Turns** pass on every successful placement. The weight of the object goes on
+  the placer's tally, whoever's it is when the tower finally goes; the scoreboard
+  ranks by weight carried and names who put the last one on.
 
 ## Adding objects
 
@@ -97,9 +108,9 @@ Field reference:
 | field | meaning |
 | --- | --- |
 | `id` | unique slug; also the artwork filename |
-| `name` | shown on the stage |
+| `name` | shown on the offer card |
 | `weight` | kilograms, for comedy. Drives the score readout and, heavily compressed, the physics density |
-| `size` | longest visible dimension in world units. Atlas' platform is 400 wide |
+| `size` | longest visible dimension in world units. The platform is 400 wide |
 | `tier` | 1 (pocket junk) … 6 (celestial bodies). A tier unlocks every 7 placements |
 | `friction`, `restitution` | optional physics overrides |
 
@@ -114,31 +125,60 @@ does not turn the pile beneath it into soup.
 | `src/sprites.js` | rasterises art, traces collision outlines from pixels |
 | `src/physics.js` | Matter.js world, body construction, drop projection |
 | `src/camera.js` | framing — keeps guaranteed empty space above the pile |
-| `src/atlas.js` | places `assets/atlas.svg` so his hands and back land on the platform surface |
-| `src/ui.js` | the object stage, score readouts, overlays, mass formatting |
+| `src/carriers.js` | reads any carrier image's alpha and works out where the load rests |
+| `src/carrier.js` | draws the chosen carrier, the ground, and the sweat |
+| `src/names.js` | the Greek roster the re-roll button pulls from |
+| `src/ui.js` | offers, player and pile readouts, setup and select screens, mass formatting |
 | `src/render.js` | sky, clouds, stars, sprites, landing shadow |
 | `src/input.js` | one-finger drag, two-finger rotate, wheel and keys |
-| `src/game.js` | run state, placement rules, topple detection |
+| `src/game.js` | run state, turn order, placement rules, topple detection |
 | `vendor/` | Matter.js + poly-decomp browser builds, loaded as plain scripts |
 | `scripts/fetch-assets.mjs` | vendors artwork; also validates the catalog |
-| `scripts/make-atlas-art.mjs` | regenerates `assets/atlas.svg` — edit the pose here |
+| `scripts/make-atlas-art.mjs` | regenerates `assets/carriers/atlas.svg` — edit the pose here |
 | `scripts/vendor-libs.mjs` | refreshes `vendor/` from `node_modules` |
 | `scripts/serve.mjs` | dependency-free local server for `npm run dev` |
 
-## Redrawing Atlas
+## Carriers
 
-Atlas is vector art, not drawing code: [`assets/atlas.svg`](assets/atlas.svg),
-generated by [`scripts/make-atlas-art.mjs`](scripts/make-atlas-art.mjs) from
-joints and widths rather than raw path data. Move a joint, `npm run atlas-art`,
-reload.
+<a id="carriers"></a>
 
-The figure is drawn on its own terms — anatomy first. The only thing the game
-takes from it is the `SUPPORT` metrics the script prints on every run: the flat
-across the tops of both hands, which is what the pile presses down on. His head
-and back sit just below that line, exactly where the globe met them in the logo
-this is copied from, and he is wider than what he carries. Those metrics are
-mirrored in `ATLAS_ART` in `src/physics.js`, which also derives `GROUND_Y` from
-them so his knee always meets the ground line.
+**Any image can be the platform.** Nothing about a carrier is authored by hand —
+no support line, no scale, no ground offset. To add one:
+
+1. Drop a PNG or SVG into `assets/carriers/`.
+2. Add a row to [`src/data/carriers.json`](src/data/carriers.json):
+
+   ```json
+   { "id": "forklift", "name": "Forklift", "blurb": "Union rules apply.",
+     "art": "forklift.svg" }
+   ```
+
+It appears on the select screen with a thumbnail, and the pile stacks on it.
+That is the whole process.
+
+The measurement is in [`src/carriers.js`](src/carriers.js), and the rule is one
+sentence: **whatever is highest in the picture bears the weight, from the
+leftmost to the rightmost of those high points.** The art is rasterised, the
+topmost solid row found from its alpha, and the widest solid span within the top
+5% taken as the support line. That lands on Atlas' two raised hands, a
+tortoise's flat shell, and a table top without any of them knowing about each
+other. The image is then scaled so that span is at least as wide as the 400-unit
+platform and at least 320 units deep, centred on the support line, and the
+ground is placed at its feet.
+
+So the artwork that works best is a figure or object **seen side-on with a flat
+top, drawn wider than what it will carry**, on a transparent background. Wonky
+art still plays, it just holds the pile wherever its highest points happen to
+be. If the rule misreads something, `src/data/carriers.json` takes an optional
+`support` override (`{ "y": 0.3, "left": 0.2, "right": 0.8 }`, fractions of the
+image) — it should rarely be needed.
+
+The three that ship are Atlas, a World Tortoise and a folding table. Atlas
+himself is vector art, not drawing code:
+[`assets/carriers/atlas.svg`](assets/carriers/atlas.svg), generated by
+[`scripts/make-atlas-art.mjs`](scripts/make-atlas-art.mjs) from joints and
+widths rather than raw path data. Move a joint, `npm run atlas-art`, reload —
+the game re-measures him on its own.
 
 ## Credits
 

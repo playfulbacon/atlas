@@ -1,0 +1,96 @@
+/** @typedef {import('./types.js').Carrier} Carrier */
+/** @typedef {{ ground: string, groundShade: string }} CarrierStyle */
+
+/**
+ * Draws whichever carrier the players picked. It knows nothing about what the
+ * picture is — src/carriers.js has already measured where its load-bearing
+ * surface is and scaled it into world units.
+ */
+
+const INK = '#17181a';
+
+/**
+ * @typedef {object} CarrierOptions
+ * @property {Carrier | null} carrier
+ * @property {number} strain 0 = fresh, 1 = holding up a solar system.
+ * @property {number} time   Seconds since the run began, for the tremble.
+ * @property {number} scale  Camera scale, so the ground line keeps a sane thickness.
+ * @property {number} groundY
+ * @property {CarrierStyle} style
+ */
+
+/**
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {CarrierOptions} opts
+ */
+export function drawCarrier(ctx, opts) {
+  const { carrier, strain, time, scale, groundY, style } = opts;
+
+  drawGround(ctx, style, groundY, Math.max(4, 1.8 / scale));
+  if (!carrier) return;
+
+  ctx.save();
+  // It wobbles harder the more absurd the pile gets.
+  const wobble = strain * 2.8;
+  ctx.translate(Math.sin(time * 21) * wobble, Math.sin(time * 16.5 + 1.1) * wobble * 0.55);
+
+  const d = carrier.draw;
+  ctx.drawImage(carrier.image, d.x, d.y, d.w, d.h);
+  if (strain > 0.3) drawEffort(ctx, carrier, strain, time, scale);
+
+  ctx.restore();
+}
+
+/**
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {CarrierStyle} style
+ * @param {number} groundY
+ * @param {number} ink
+ */
+function drawGround(ctx, style, groundY, ink) {
+  const reach = 24000;
+  ctx.fillStyle = style.ground;
+  ctx.fillRect(-reach, groundY, reach * 2, reach);
+  ctx.fillStyle = style.groundShade;
+  ctx.fillRect(-reach, groundY, reach * 2, 8);
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = ink;
+  ctx.beginPath();
+  ctx.moveTo(-reach, groundY);
+  ctx.lineTo(reach, groundY);
+  ctx.stroke();
+}
+
+/**
+ * Sweat. The artwork carries no expression, so this and the tremble are what
+ * show how hard the thing is working.
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Carrier} carrier
+ * @param {number} strain
+ * @param {number} time
+ * @param {number} scale
+ */
+function drawEffort(ctx, carrier, strain, time, scale) {
+  ctx.strokeStyle = '#4f93cc';
+  ctx.fillStyle = '#a9dcf7';
+  ctx.lineWidth = Math.max(2.5, 1.2 / scale);
+  ctx.lineJoin = 'round';
+
+  const beads = strain > 0.7 ? 3 : 2;
+  for (let i = 0; i < beads; i++) {
+    const phase = (time * 0.7 + i * 0.41) % 1;
+    const side = i % 2 === 0 ? -1 : 1;
+    const x = side * (52 + phase * 30);
+    const y = carrier.headY + phase * 96;
+    ctx.globalAlpha = Math.sin(phase * Math.PI) * 0.95;
+    ctx.beginPath();
+    ctx.moveTo(x, y - 12);
+    ctx.lineTo(x + 8, y + 2);
+    ctx.lineTo(x, y + 10);
+    ctx.lineTo(x - 8, y + 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+}

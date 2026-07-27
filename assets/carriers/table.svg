@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" width="640" height="360">
+  <g fill="#ffffff" stroke="#17181a" stroke-width="8" stroke-linejoin="round" stroke-linecap="round">
+    <!-- Legs, splayed just enough to look untrustworthy. -->
+    <polygon points="104,96 138,96 176,318 146,318"/>
+    <polygon points="502,96 536,96 494,318 464,318"/>
+    <polygon points="214,96 244,96 236,314 208,314"/>
+    <polygon points="396,96 426,96 432,314 404,314"/>
+    <!-- Top: the flat the load rests on. -->
+    <polygon points="46,40 594,40 594,92 46,92"/>
+  </g>
+  <g fill="none" stroke="#17181a" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+    <polyline points="46,66 594,66"/>
+    <!-- Cross brace, doing very little. -->
+    <polyline points="180,200 452,236"/>
+    <polyline points="188,238 460,198"/>
+  </g>
+</svg>

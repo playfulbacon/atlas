@@ -41,4 +41,34 @@
  *   in the same normalised local units.
  */
 
+/**
+ * One entry in src/data/carriers.json — a thing that holds the pile up.
+ * @typedef {object} CarrierDef
+ * @property {string} id
+ * @property {string} name
+ * @property {string} blurb   One line shown on the select screen.
+ * @property {string} art     Filename inside assets/carriers/.
+ * @property {{ y: number, left: number, right: number, bottom?: number }} [support]
+ *   Optional manual load-bearing surface, as fractions of the artwork. Only
+ *   needed when the automatic reading of the alpha channel gets it wrong.
+ */
+
+/**
+ * A carrier measured and scaled into world units.
+ * @typedef {object} Carrier
+ * @property {CarrierDef} def
+ * @property {HTMLImageElement} image
+ * @property {number} groundY  Where its lowest point meets the ground.
+ * @property {{ x: number, y: number, w: number, h: number }} draw
+ * @property {number} headY    Roughly where its top mass sits, for effects.
+ */
+
+/**
+ * One player in a run.
+ * @typedef {object} Player
+ * @property {string} name
+ * @property {number} weight  Total kilograms this player has added.
+ * @property {number} placed  How many objects this player has added.
+ */
+
 export {};

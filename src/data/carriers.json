@@ -1,0 +1,20 @@
+[
+  {
+    "id": "atlas",
+    "name": "Atlas",
+    "blurb": "The original. Has never once put it down.",
+    "art": "atlas.svg"
+  },
+  {
+    "id": "tortoise",
+    "name": "World Tortoise",
+    "blurb": "Slower, but the shell is genuinely flat.",
+    "art": "tortoise.svg"
+  },
+  {
+    "id": "table",
+    "name": "Folding Table",
+    "blurb": "Rated for four kilograms. Optimistically.",
+    "art": "table.svg"
+  }
+]

@@ -22,37 +22,15 @@ export const PLATFORM_HALF = PLATFORM_WIDTH / 2;
 export const PLATFORM_TOP = 0;
 export const PLATFORM_DEPTH = 30;
 /**
- * Metrics of assets/atlas.svg, in that file's own viewBox units. The artwork is
- * scaled so the flat across the tops of his hands lands exactly on the
- * platform's top surface and spans its full width. His head and back sit just
- * below that line, the way the globe met them in the reference — he is wider
- * than what he carries, which is the point.
- *
- * Keep in step with scripts/make-atlas-art.mjs, which prints these on every run.
+ * Line below which a body has unambiguously fallen off the carrier. It has to
+ * clear the platform above and whatever is resting on the ground below, and the
+ * ground moves with the carrier — so it is derived, not fixed.
+ * @param {number} groundY
+ * @returns {number}
  */
-export const ATLAS_ART = {
-  view: { w: 640, h: 700 },
-  /** Tops of both hands — what the pile actually presses down on. */
-  supportY: 210,
-  supportLeft: 138,
-  supportRight: 502,
-  bottom: 660,
-};
-
-/** World units per artwork unit. */
-export const ATLAS_SCALE = PLATFORM_WIDTH / (ATLAS_ART.supportRight - ATLAS_ART.supportLeft);
-
-/**
- * Where Atlas kneels — derived from the artwork, so his knee and foot always
- * meet the ground line however the pose is redrawn. Debris lands here; nothing
- * may be *placed* here.
- */
-export const GROUND_Y = Math.round((ATLAS_ART.bottom - ATLAS_ART.supportY) * ATLAS_SCALE);
-/**
- * Below the platform, above anything resting on the ground: a body whose centre
- * passes this line has unambiguously fallen off Atlas.
- */
-export const TOPPLE_Y = 120;
+export function toppleLine(groundY) {
+  return Math.min(130, Math.max(50, groundY - 200));
+}
 /** ...or this far sideways. */
 export const TOPPLE_X = 2600;
 
@@ -89,8 +67,11 @@ export function createPlatform() {
  * Only exists so a collapse lands somewhere instead of falling forever. It is
  * deliberately *not* offered as a placement surface — see Game.updateHeld.
  */
-export function createGround() {
-  return Bodies.rectangle(0, GROUND_Y + 400, 40000, 800, {
+/**
+ * @param {number} groundY
+ */
+export function createGround(groundY) {
+  return Bodies.rectangle(0, groundY + 400, 40000, 800, {
     isStatic: true,
     friction: 0.9,
     restitution: 0,

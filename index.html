@@ -12,26 +12,26 @@
   <body>
     <canvas id="stage"></canvas>
 
-    <div id="tray" class="tray hidden">
-      <div class="tray-row">
-        <div class="stat">
-          <span class="stat-label">Objects</span>
-          <span class="stat-value" id="score">0</span>
-        </div>
-        <div id="trayCard" class="stage">
-          <div class="stage-pedestal">
-            <img id="trayImg" class="stage-img" alt="" draggable="false" />
-          </div>
-          <div id="trayName" class="stage-name">&nbsp;</div>
-          <div id="trayWeight" class="stage-weight">&nbsp;</div>
-        </div>
-        <div class="stat stat-right">
-          <span class="stat-label">On his back</span>
-          <span class="stat-value" id="weight">0 kg</span>
-        </div>
+    <!-- Players, top left. Floating text, no platter. -->
+    <div id="players" class="players hidden"></div>
+
+    <!-- Pile totals, top right. Also floating. -->
+    <div id="totals" class="totals hidden">
+      <div class="total">
+        <span class="total-label">Objects</span>
+        <span class="total-value" id="score">0</span>
       </div>
+      <div class="total">
+        <span class="total-label">Weight</span>
+        <span class="total-value" id="weight">0 kg</span>
+      </div>
+    </div>
+
+    <!-- Three offers. Drag one onto the pile; the other two grey out. -->
+    <div id="tray" class="tray hidden">
+      <div class="slots" id="slots"></div>
       <p class="tray-hint">
-        <span class="hint-drag">Drag anywhere to steer it</span>
+        <span class="hint-drag">Drag one down onto the pile</span>
         <span class="hint-rotate">Two fingers to rotate · scroll wheel or Q / E on desktop</span>
       </p>
     </div>
@@ -43,6 +43,7 @@
       <button id="soundBtn" class="icon-btn" aria-label="Mute" type="button">🔊</button>
     </div>
 
+    <!-- 1. Title and players ------------------------------------------- -->
     <div id="title" class="overlay">
       <div class="panel">
         <h1 class="logo">ATLAS</h1>
@@ -56,14 +57,12 @@
           <img src="./assets/objects/moai.svg" alt="" />
           <img src="./assets/objects/t-rex.svg" alt="" />
         </div>
-        <ul class="rules">
-          <li>Lift the object out of its stage up top and drag it down onto the load.</li>
-          <li>The shadow shows exactly where it will come to rest. Hold it wherever you like, even inside the pile.</li>
-          <li>It only needs something underneath it to land on.</li>
-          <li>Two fingers rotate it. So does the scroll wheel, or Q&nbsp;/&nbsp;E.</li>
-          <li>Every object is a point. If the pile falls, that's the run.</li>
-        </ul>
-        <button id="startBtn" class="big-btn" type="button">Start stacking</button>
+
+        <h2 class="field-label">Players</h2>
+        <div class="count-row" id="countRow" role="group" aria-label="Number of players"></div>
+        <ul class="roster" id="roster"></ul>
+
+        <button id="toSelectBtn" class="big-btn" type="button">Choose a carrier</button>
         <p class="credit">
           Artwork from <a href="https://openmoji.org" target="_blank" rel="noopener">OpenMoji</a> (CC&nbsp;BY-SA&nbsp;4.0),
           plus a few drawn by hand.
@@ -71,21 +70,35 @@
       </div>
     </div>
 
+    <!-- 2. Carrier select ---------------------------------------------- -->
+    <div id="select" class="overlay hidden">
+      <div class="panel">
+        <h2 class="over-title">Who is holding it up?</h2>
+        <p class="tagline">Whatever you pick, the pile lands on whatever is highest.</p>
+        <div class="carriers" id="carriers"></div>
+        <button id="startBtn" class="big-btn" type="button">Start stacking</button>
+        <button id="backBtn" class="text-btn" type="button">Back to players</button>
+      </div>
+    </div>
+
+    <!-- 3. Game over ---------------------------------------------------- -->
     <div id="over" class="overlay hidden">
       <div class="panel">
         <h2 class="over-title">Everything fell over</h2>
         <p id="overNote" class="over-note"></p>
+        <ol class="scoreboard" id="scoreboard"></ol>
         <div class="over-stats">
           <div class="over-stat">
-            <span class="stat-label">Objects balanced</span>
+            <span class="total-label">Objects balanced</span>
             <span class="stat-big" id="overScore">0</span>
           </div>
           <div class="over-stat">
-            <span class="stat-label">Total weight</span>
+            <span class="total-label">Total weight</span>
             <span class="stat-big" id="overWeight">0 kg</span>
           </div>
         </div>
         <button id="restartBtn" class="big-btn" type="button">Go again</button>
+        <button id="overSetupBtn" class="text-btn" type="button">Change players or carrier</button>
       </div>
     </div>
 
