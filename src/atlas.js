@@ -24,7 +24,7 @@ const DRAW = {
 };
 
 /** Head position in world units, so sweat runs off the right place. */
-const HEAD_Y = (304 - ATLAS_ART.supportY) * ATLAS_SCALE;
+const HEAD_Y = (280 - ATLAS_ART.supportY) * ATLAS_SCALE;
 
 /** @type {HTMLImageElement | null} */
 let art = null;

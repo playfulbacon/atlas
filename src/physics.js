@@ -23,17 +23,20 @@ export const PLATFORM_TOP = 0;
 export const PLATFORM_DEPTH = 30;
 /**
  * Metrics of assets/atlas.svg, in that file's own viewBox units. The artwork is
- * scaled so the flat across his hands and back — its "support line" — lands
- * exactly on the platform's top surface and spans its full width.
+ * scaled so the flat across the tops of his hands lands exactly on the
+ * platform's top surface and spans its full width. His head and back sit just
+ * below that line, the way the globe met them in the reference — he is wider
+ * than what he carries, which is the point.
  *
  * Keep in step with scripts/make-atlas-art.mjs, which prints these on every run.
  */
 export const ATLAS_ART = {
-  view: { w: 720, h: 660 },
-  supportY: 46,
-  supportLeft: 90,
-  supportRight: 630,
-  bottom: 612,
+  view: { w: 640, h: 700 },
+  /** Tops of both hands — what the pile actually presses down on. */
+  supportY: 210,
+  supportLeft: 138,
+  supportRight: 502,
+  bottom: 660,
 };
 
 /** World units per artwork unit. */

@@ -1,16 +1,14 @@
 #!/usr/bin/env node
 /**
- * Generates assets/atlas.svg — the kneeling figure the game draws as Atlas.
- *
- * The figure is defined here as joints and widths rather than as raw path data,
- * so the pose stays editable: move a joint, re-run, done.
+ * Generates assets/atlas.svg: a faceted line-art Atlas kneeling with both arms
+ * raised, copied from the reference logo with the globe left off.
  *
  *   npm run atlas-art
  *
- * THE ONE HARD CONSTRAINT: the tops of both hands, both forearms and his upper
- * back all sit on the line y = SUPPORT_Y and together span SUPPORT_LEFT to
- * SUPPORT_RIGHT with no break. That line is the top of the game's static
- * platform, so any gap in it is a place where objects hover unsupported.
+ * The figure is drawn on its own terms — anatomy first, game second. What the
+ * game needs from it is only the SUPPORT metrics printed at the end: the flat
+ * across the tops of both hands, which is what the pile rests on. His head and
+ * back sit just below that line, the way the globe met them in the reference.
  */
 import { writeFile, mkdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -18,158 +16,132 @@ import path from 'node:path';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-const VIEW = { w: 720, h: 660 };
-const SUPPORT_Y = 46;
-const SUPPORT_LEFT = 90;
-const SUPPORT_RIGHT = 630;
-const CENTRE = 360;
-const BOTTOM = 612;
+const VIEW = { w: 640, h: 700 };
+/** Tops of both hands: the flat the load presses down on. */
+const SUPPORT_Y = 210;
+const SUPPORT_LEFT = 138;
+const SUPPORT_RIGHT = 502;
+const BOTTOM = 660;
 
 const INK = '#17181a';
 const PAPER = '#ffffff';
-const STROKE = 10;
+const STROKE = 8;
 
-/** Mirrors an x about the centre line. */
-const mx = (x) => 2 * CENTRE - x;
+/* ------------------------------------------------------------------------ */
+/* The figure. Viewer's left is his right; he kneels on the near knee.        */
+/* ------------------------------------------------------------------------ */
 
-/**
- * Offsets a straight spine into a tapered quad. Straight segments only —
- * a polyline that folds back on itself has no usable offset at the fold.
- */
-function limb([ax, ay], [bx, by], wa, wb) {
-  const dx = bx - ax;
-  const dy = by - ay;
-  const len = Math.hypot(dx, dy) || 1;
-  const nx = -dy / len;
-  const ny = dx / len;
-  return [
-    [ax + (nx * wa) / 2, ay + (ny * wa) / 2],
-    [bx + (nx * wb) / 2, by + (ny * wb) / 2],
-    [bx - (nx * wb) / 2, by - (ny * wb) / 2],
-    [ax - (nx * wa) / 2, ay - (ny * wa) / 2],
-  ];
-}
-
-/** Mirrors a polygon to the other side of the figure. */
-const mirror = (poly) => poly.map(([x, y]) => [mx(x), y]);
-
-/* ---------------------------------------------------------------- pose ---- */
+/** Bowed head, seen from above and in front, tilted down. */
+const HEAD = [
+  [300, 230], [338, 244], [354, 276], [344, 312],
+  [312, 332], [278, 330], [254, 306], [248, 268], [268, 240],
+];
 
 /**
- * Bent forward: the flat of his back is the middle of the support line, and the
- * torso falls away from it to narrow hips.
+ * Back and ribs, bent hard forward. His shoulders sit behind the head, which
+ * is what makes the stoop read; the mass narrows into the hips.
  */
 const TORSO = [
-  [212, SUPPORT_Y], [508, SUPPORT_Y],
-  [512, 122], [480, 204], [452, 264], [412, 296],
-  [308, 296],
-  [268, 264], [240, 204], [208, 122],
+  [230, 300], [300, 282], [378, 294],
+  [402, 336], [412, 392], [398, 442],
+  [372, 476], [312, 488], [268, 474],
+  [242, 440], [226, 386], [216, 336],
 ];
 
-/** Pelvis, behind the head, where the legs hang from. */
+/** Hips, tucked behind the torso, where both legs hang from. */
 const HIPS = [
-  [300, 244], [420, 244], [448, 320], [440, 396],
-  [404, 428], [316, 428], [280, 396], [272, 320],
+  [258, 430], [382, 430], [396, 470], [386, 512],
+  [346, 532], [292, 532], [252, 510], [244, 468],
+];
+
+/* --- arms: shoulder out and down to a low elbow, forearm back up to a flat
+   hand. Mirrored, because the pose is symmetrical about his spine. --------- */
+
+const UPPER_ARM_L = [[228, 268], [248, 330], [140, 376], [100, 326]];
+const FOREARM_L = [[100, 326], [152, 348], [184, 258], [132, 244]];
+const HAND_L = [[SUPPORT_LEFT, SUPPORT_Y], [214, SUPPORT_Y], [208, 256], [132, 250]];
+
+/** Near leg: knee down on the ground, lower leg folded back behind him. */
+const LEG_KNEEL = [
+  [232, 476], [312, 492],
+  [306, 556], [300, 616], [292, 650],
+  [140, 656], [126, 618], [218, 598],
+  [224, 540], [228, 486],
+];
+
+/** Far leg: knee up and forward, foot planted flat. */
+const LEG_PLANTED = [
+  [360, 470], [412, 486], [456, 518],
+  [482, 562], [490, 622],
+  [548, 634], [552, BOTTOM], [420, BOTTOM],
+  [422, 622], [432, 562],
+  [414, 526], [376, 500],
 ];
 
 /**
- * Head bowed under the load, with a band of upper back still visible above it.
- * That band is what stops it reading as a face stuck on a chest.
+ * Facets: the interior planes that make it a carved figure rather than a
+ * cut-out. Written out per side rather than auto-mirrored — mirroring anything
+ * left of centre threw duplicate lines down his spine and off the far side of
+ * his head.
  */
-/**
- * Bowed so far forward that his head hangs below the line of his back, the way
- * it does in a real carrying stoop. Drawn last so it sits in front of the hips.
- */
-const HEAD = [
-  [360, 246], [414, 270], [436, 308], [414, 344],
-  [360, 362], [306, 344], [284, 308], [306, 270],
-];
-
-/**
- * Each arm is one tapered wedge rather than a chain of boxes. Its top edge is
- * part of the support line; its inner edge peels away from the torso below,
- * opening a wedge of background between arm and body. That gap is the whole
- * reason the arms read as raised limbs instead of shoulder padding.
- */
-const ARM_L = [
-  [SUPPORT_LEFT, SUPPORT_Y], [212, SUPPORT_Y],
-  [206, 114], [178, 174], [152, 244], [140, 296],
-  [98, 292], [76, 218], [62, 134], [66, 60],
-];
-
-/** Flat of the hand, drawn over the arm so its outline reads as the wrist. */
-const HAND_L = [[SUPPORT_LEFT, SUPPORT_Y], [204, SUPPORT_Y], [198, 108], [84, 114]];
-
-/**
- * Legs are traced as one polygon each, hip to toe. Chaining separate quads left
- * notches at every joint, which is what made the first pass look like a pile of
- * loose boxes rather than a body.
- */
-
-/** Near leg: knee high and out, foot planted flat. */
-const LEG_R = [
-  [416, 376], [534, 396], [598, 434],
-  [598, 472], [596, 556],
-  [644, 580], [648, BOTTOM], [532, BOTTOM],
-  [552, 556], [548, 472],
-  [514, 448], [462, 436], [410, 428],
-];
-
-/** Far leg: knee down on the ground, shin folded away behind him. */
-const LEG_L = [
-  [304, 376], [216, 442], [140, 528],
-  [136, 582], [330, BOTTOM], [336, 564],
-  [226, 540], [242, 474], [322, 412], [352, 392],
-];
-
-/** Interior lines: the sparse faceting that makes it read as a carved figure. */
 const FACETS = [
-  // Trapezius, running from the bowed head out to each shoulder.
-  [[306, 92], [258, 60]],
-  [[mx(306), 92], [mx(258), 60]],
-  // Spine down the back.
-  [[360, 108], [360, 232]],
-  // Elbow, dividing forearm from upper arm.
-  [[92, 232], [166, 206]],
-  [[mx(92), 232], [mx(166), 206]],
-  // Knee creases and thigh planes.
-  [[542, 452], [590, 468]],
-  [[188, 520], [252, 542]],
-  [[452, 400], [526, 438]],
-  [[300, 396], [214, 492]],
+  // Hair falling forward over the bowed crown.
+  [[276, 248], [302, 238], [330, 252]],
+  [[288, 268], [308, 258]],
+  // Spine, with a shoulder blade either side.
+  [[320, 300], [322, 386], [322, 450]],
+  [[262, 300], [292, 356], [298, 418]],
+  [[378, 300], [348, 356], [342, 418]],
+  // Flanks.
+  [[226, 352], [262, 410]],
+  [[414, 352], [378, 410]],
+  // Deltoid, forearm plane, elbow crease — each arm.
+  [[226, 296], [188, 342]],
+  [[414, 296], [452, 342]],
+  [[142, 288], [174, 298]],
+  [[498, 288], [466, 298]],
+  [[106, 332], [152, 350]],
+  [[534, 332], [488, 350]],
+  // Thighs and the planted shin.
+  [[254, 506], [286, 580]],
+  [[392, 498], [450, 534]],
+  [[452, 574], [474, 626]],
 ];
 
 /** Knuckles across the flat of each hand. */
 for (let i = 0; i < 3; i++) {
-  FACETS.push([[112 + i * 26, 58], [110 + i * 26, 96]]);
-  FACETS.push([[mx(112 + i * 26), 58], [mx(110 + i * 26), 96]]);
+  FACETS.push([[158 + i * 20, 220], [156 + i * 20, 246]]);
+  FACETS.push([[482 - i * 20, 220], [484 - i * 20, 246]]);
 }
 
-/* --------------------------------------------------------------- output --- */
+/* ------------------------------------------------------------------------ */
+
+const CENTRE = (SUPPORT_LEFT + SUPPORT_RIGHT) / 2;
+/** Mirrors a shape across his spine. */
+const mirror = (poly) => poly.map(([x, y]) => [2 * CENTRE - x, y]);
 
 const round = (n) => Math.round(n * 10) / 10;
 const pts = (poly) => poly.map(([x, y]) => `${round(x)},${round(y)}`).join(' ');
-const polygon = (poly) => `    <polygon points="${pts(poly)}"/>`;
-const polyline = (line) => `    <polyline points="${pts(line)}"/>`;
 
-// Back leg first, torso over it, then the near leg, head, and arms on top.
+// Far side first, then the body, then the near side over it.
 const SHAPES = [
-  LEG_L,
+  mirror(UPPER_ARM_L), mirror(FOREARM_L),
+  LEG_KNEEL,
   HIPS,
   TORSO,
-  LEG_R,
+  LEG_PLANTED,
   HEAD,
-  ARM_L, HAND_L,
-  mirror(ARM_L), mirror(HAND_L),
+  UPPER_ARM_L, FOREARM_L,
+  HAND_L, mirror(HAND_L),
 ];
 
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${VIEW.w} ${VIEW.h}" width="${VIEW.w}" height="${VIEW.h}">
   <!-- Generated by scripts/make-atlas-art.mjs — edit the pose there, not here. -->
   <g fill="${PAPER}" stroke="${INK}" stroke-width="${STROKE}" stroke-linejoin="round" stroke-linecap="round">
-${SHAPES.map(polygon).join('\n')}
+${SHAPES.map((p) => `    <polygon points="${pts(p)}"/>`).join('\n')}
   </g>
-  <g fill="none" stroke="${INK}" stroke-width="${STROKE * 0.55}" stroke-linejoin="round" stroke-linecap="round" opacity="0.8">
-${FACETS.map(polyline).join('\n')}
+  <g fill="none" stroke="${INK}" stroke-width="${STROKE * 0.6}" stroke-linejoin="round" stroke-linecap="round">
+${FACETS.map((p) => `    <polyline points="${pts(p)}"/>`).join('\n')}
   </g>
 </svg>
 `;
@@ -178,5 +150,5 @@ await mkdir(path.join(ROOT, 'assets'), { recursive: true });
 await writeFile(path.join(ROOT, 'assets/atlas.svg'), svg);
 
 console.log(`assets/atlas.svg  ${VIEW.w}x${VIEW.h}`);
-console.log(`  support line y=${SUPPORT_Y}, x ${SUPPORT_LEFT}..${SUPPORT_RIGHT} (span ${SUPPORT_RIGHT - SUPPORT_LEFT})`);
-console.log(`  figure bottom  y=${BOTTOM}`);
+console.log(`  support (tops of hands): y=${SUPPORT_Y}, x ${SUPPORT_LEFT}..${SUPPORT_RIGHT} (span ${SUPPORT_RIGHT - SUPPORT_LEFT})`);
+console.log(`  figure bottom: y=${BOTTOM}`);
