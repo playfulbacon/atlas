@@ -1,0 +1,415 @@
+:root {
+  --ink: #1f1b17;
+  --ink-soft: #6b625a;
+  --paper: #fffdf8;
+  --line: rgba(31, 27, 23, 0.12);
+  --shadow: 0 6px 20px rgba(31, 27, 23, 0.14);
+  --radius: 16px;
+  --font: ui-rounded, "SF Pro Rounded", "Segoe UI", "Nunito", system-ui, -apple-system, sans-serif;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  font-family: var(--font);
+  color: var(--ink);
+  background: #bfe2f5;
+}
+
+#stage {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  /* Essential: lets the canvas own one- and two-finger gestures. */
+  touch-action: none;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* ---------------------------------------------------------------- HUD */
+
+.hud {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: max(14px, env(safe-area-inset-top)) 16px 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: rgba(255, 253, 248, 0.82);
+  backdrop-filter: blur(8px);
+  border-radius: 12px;
+  padding: 7px 13px;
+  box-shadow: var(--shadow);
+}
+
+.stat-right {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.stat-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+}
+
+.icon-btn {
+  pointer-events: auto;
+  border: none;
+  background: rgba(255, 253, 248, 0.82);
+  backdrop-filter: blur(8px);
+  box-shadow: var(--shadow);
+  border-radius: 12px;
+  width: 38px;
+  height: 38px;
+  font-size: 16px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+/* --------------------------------------------------------------- Tray */
+
+.tray {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 10px 16px calc(12px + var(--safe-bottom));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+}
+
+.tray-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tray-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 210px;
+  max-width: 78vw;
+  padding: 9px 18px 9px 11px;
+  background: var(--paper);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.tray-img {
+  width: 46px;
+  height: 46px;
+  object-fit: contain;
+  flex: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.tray-text {
+  min-width: 0;
+}
+
+.tray-name {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tray-weight {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+/* While dragging, the card steps aside — the object is out on the canvas. */
+.tray.is-dragging .tray-card {
+  opacity: 0.28;
+  transform: translateY(6px) scale(0.96);
+}
+
+.tray-card.is-empty {
+  opacity: 0.35;
+}
+
+.rotate-btn {
+  pointer-events: auto;
+  flex: none;
+  width: 50px;
+  height: 50px;
+  border: none;
+  border-radius: 50%;
+  background: var(--paper);
+  box-shadow: var(--shadow);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--ink);
+}
+
+.rotate-btn:active {
+  transform: scale(0.93);
+}
+
+.tray-hint {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(31, 27, 23, 0.55);
+  text-align: center;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.hint-rotate {
+  font-weight: 500;
+  opacity: 0.75;
+}
+
+.shake {
+  animation: shake 0.32s ease;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-7px); }
+  45% { transform: translateX(6px); }
+  70% { transform: translateX(-3px); }
+}
+
+/* -------------------------------------------------------------- Toast */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(150px + var(--safe-bottom));
+  transform: translate(-50%, 8px);
+  padding: 8px 16px;
+  border-radius: 999px;
+  background: rgba(31, 27, 23, 0.88);
+  color: #fffdf8;
+  font-size: 13px;
+  font-weight: 600;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+/* ----------------------------------------------------------- Overlays */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(31, 27, 23, 0.28);
+  backdrop-filter: blur(3px);
+  z-index: 10;
+}
+
+.panel {
+  width: min(430px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  padding: 28px 26px 24px;
+  background: var(--paper);
+  border-radius: 24px;
+  box-shadow: 0 18px 50px rgba(31, 27, 23, 0.3);
+  text-align: center;
+}
+
+.logo {
+  margin: 0;
+  font-size: clamp(44px, 13vw, 62px);
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  line-height: 1;
+}
+
+.tagline {
+  margin: 10px 0 20px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+
+/* A sample of the catalog, doing the talking. */
+.lineup {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 4px;
+  margin: 0 0 20px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.lineup img {
+  /* Percentage width so the row never overflows a narrow panel. */
+  width: min(42px, 12.5%);
+  height: auto;
+  aspect-ratio: 1;
+  object-fit: contain;
+}
+
+.lineup img:nth-child(odd) {
+  transform: rotate(-7deg) translateY(-2px);
+}
+
+.lineup img:nth-child(even) {
+  transform: rotate(6deg);
+}
+
+.rules {
+  margin: 0 0 22px;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+
+.rules li {
+  padding-left: 22px;
+  position: relative;
+}
+
+.rules li::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 7px;
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  background: #f4801f;
+}
+
+.big-btn {
+  width: 100%;
+  padding: 15px 20px;
+  border: none;
+  border-radius: 14px;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: transform 0.12s ease, background 0.12s ease;
+}
+
+.big-btn:hover {
+  background: #332c25;
+}
+
+.big-btn:active {
+  transform: scale(0.98);
+}
+
+.credit {
+  margin: 16px 0 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: rgba(31, 27, 23, 0.45);
+}
+
+.credit a {
+  color: inherit;
+}
+
+.over-title {
+  margin: 0;
+  font-size: 27px;
+  font-weight: 800;
+}
+
+.over-note {
+  margin: 7px 0 20px;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+
+.over-stats {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 22px;
+}
+
+.over-stat {
+  flex: 1;
+  padding: 14px 10px;
+  border-radius: 14px;
+  background: rgba(31, 27, 23, 0.045);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-big {
+  font-size: 22px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 380px) {
+  .tray-card { min-width: 0; }
+  .tray-img { width: 38px; height: 38px; }
+}

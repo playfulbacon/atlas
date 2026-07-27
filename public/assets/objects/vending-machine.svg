@@ -1,0 +1,28 @@
+<svg viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg">
+  <g id="color">
+    <path fill="#ea5a47" d="M15 5h42a3 3 0 013 3v56a3 3 0 01-3 3H15a3 3 0 01-3-3V8a3 3 0 013-3z"/>
+    <path fill="#92d3f5" d="M17 11h24v38H17z"/>
+    <g fill="#fcea2b">
+      <circle cx="22" cy="17" r="2.6"/><circle cx="29" cy="17" r="2.6"/><circle cx="36" cy="17" r="2.6"/>
+    </g>
+    <g fill="#b1cc33">
+      <circle cx="22" cy="28" r="2.6"/><circle cx="29" cy="28" r="2.6"/><circle cx="36" cy="28" r="2.6"/>
+    </g>
+    <g fill="#61b2e4">
+      <circle cx="22" cy="39" r="2.6"/><circle cx="29" cy="39" r="2.6"/><circle cx="36" cy="39" r="2.6"/>
+    </g>
+    <rect x="45" y="11" width="10" height="14" rx="1.5" fill="#d0cfce"/>
+    <rect x="47" y="30" width="6" height="2" rx="1" fill="#3f3f3f"/>
+    <rect x="45" y="37" width="10" height="12" rx="1.5" fill="#d0cfce"/>
+    <path fill="#3f3f3f" d="M17 54h38v8H17z"/>
+  </g>
+  <g id="line" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M15 5h42a3 3 0 013 3v56a3 3 0 01-3 3H15a3 3 0 01-3-3V8a3 3 0 013-3z"/>
+    <path d="M17 11h24v38H17z"/>
+    <path d="M17 22h24M17 33h24M17 44h24"/>
+    <rect x="45" y="11" width="10" height="14" rx="1.5"/>
+    <rect x="45" y="37" width="10" height="12" rx="1.5"/>
+    <path d="M47 31h6"/>
+    <path d="M17 54h38v8H17z"/>
+  </g>
+</svg>

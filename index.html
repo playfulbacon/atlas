@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#bfe2f5" />
+    <meta name="description" content="A silly physics game about balancing the world's junk on the back of Atlas." />
+    <title>Atlas — Don't Drop It</title>
+    <link rel="icon" href="./assets/objects/traffic-cone.svg" />
+  </head>
+  <body>
+    <canvas id="stage"></canvas>
+
+    <div id="hud" class="hud hidden">
+      <div class="stat">
+        <span class="stat-label">Objects</span>
+        <span class="stat-value" id="score">0</span>
+      </div>
+      <button id="soundBtn" class="icon-btn" aria-label="Mute" type="button">🔊</button>
+      <div class="stat stat-right">
+        <span class="stat-label">On his back</span>
+        <span class="stat-value" id="weight">0 kg</span>
+      </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <div id="tray" class="tray hidden">
+      <div class="tray-row">
+        <div id="trayCard" class="tray-card">
+          <img id="trayImg" class="tray-img" alt="" draggable="false" />
+          <div class="tray-text">
+            <div id="trayName" class="tray-name">&nbsp;</div>
+            <div id="trayWeight" class="tray-weight">&nbsp;</div>
+          </div>
+        </div>
+        <button id="rotateBtn" class="rotate-btn" type="button" aria-label="Rotate 15 degrees">⟳</button>
+      </div>
+      <p class="tray-hint">
+        <span class="hint-drag">Drag it onto the pile</span>
+        <span class="hint-rotate">Two fingers to rotate · scroll or Q / E on desktop</span>
+      </p>
+    </div>
+
+    <div id="title" class="overlay">
+      <div class="panel">
+        <h1 class="logo">ATLAS</h1>
+        <p class="tagline">He has agreed to hold absolutely anything.<br />Please be reasonable about it.</p>
+        <div class="lineup" aria-hidden="true">
+          <img src="./assets/objects/traffic-cone.svg" alt="" />
+          <img src="./assets/objects/rubber-duck.svg" alt="" />
+          <img src="./assets/objects/bathtub.svg" alt="" />
+          <img src="./assets/objects/refrigerator.svg" alt="" />
+          <img src="./assets/objects/guitar.svg" alt="" />
+          <img src="./assets/objects/moai.svg" alt="" />
+          <img src="./assets/objects/t-rex.svg" alt="" />
+        </div>
+        <ul class="rules">
+          <li>Drag each object onto his back. It must land in free space.</li>
+          <li>The shadow shows exactly where it will come to rest.</li>
+          <li>Two fingers rotate. So does the scroll wheel, or Q&nbsp;/&nbsp;E.</li>
+          <li>Every object is a point. If the pile falls, that's the run.</li>
+        </ul>
+        <button id="startBtn" class="big-btn" type="button">Start stacking</button>
+        <p class="credit">
+          Artwork from <a href="https://openmoji.org" target="_blank" rel="noopener">OpenMoji</a> (CC&nbsp;BY-SA&nbsp;4.0),
+          plus a few drawn by hand.
+        </p>
+      </div>
+    </div>
+
+    <div id="over" class="overlay hidden">
+      <div class="panel">
+        <h2 class="over-title">Everything fell over</h2>
+        <p id="overNote" class="over-note"></p>
+        <div class="over-stats">
+          <div class="over-stat">
+            <span class="stat-label">Objects balanced</span>
+            <span class="stat-big" id="overScore">0</span>
+          </div>
+          <div class="over-stat">
+            <span class="stat-label">Total weight</span>
+            <span class="stat-big" id="overWeight">0 kg</span>
+          </div>
+        </div>
+        <button id="restartBtn" class="big-btn" type="button">Go again</button>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
