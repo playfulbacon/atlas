@@ -1,8 +1,7 @@
-import './style.css';
-import { Game } from './game';
-import { UI } from './ui';
+import { Game } from './game.js';
+import { UI } from './ui.js';
 
-const canvas = document.getElementById('stage') as HTMLCanvasElement;
+const canvas = /** @type {HTMLCanvasElement} */ (document.getElementById('stage'));
 
 const ui = new UI({
   onStart: () => void game.begin(),

@@ -7,6 +7,7 @@
     <meta name="description" content="A silly physics game about balancing the world's junk on the back of Atlas." />
     <title>Atlas — Don't Drop It</title>
     <link rel="icon" href="./assets/objects/traffic-cone.svg" />
+    <link rel="stylesheet" href="./src/style.css" />
   </head>
   <body>
     <canvas id="stage"></canvas>
@@ -87,6 +88,9 @@
       </div>
     </div>
 
-    <script type="module" src="/src/main.ts"></script>
+    <!-- Classic scripts run before deferred modules, so the globals are ready. -->
+    <script src="./vendor/matter.min.js"></script>
+    <script src="./vendor/decomp.min.js"></script>
+    <script type="module" src="./src/main.js"></script>
   </body>
 </html>

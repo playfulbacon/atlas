@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Vendors every sprite referenced by src/data/objects.json into public/assets/objects/<id>.svg
+ * Vendors every sprite referenced by src/data/objects.json into assets/objects/<id>.svg
  *
  * Two art sources:
  *   { "openmoji": "1F6C1" }   -> downloaded from the OpenMoji CDN (CC BY-SA 4.0)
@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const OUT_DIR = path.join(ROOT, 'public/assets/objects');
+const OUT_DIR = path.join(ROOT, 'assets/objects');
 const CUSTOM_DIR = path.join(ROOT, 'assets/custom');
 const OPENMOJI_VERSION = '17.0.0';
 const CDN = (hex) =>

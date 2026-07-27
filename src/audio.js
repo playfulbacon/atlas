@@ -3,13 +3,15 @@
  * gesture so browsers do not block the context.
  */
 export class Sfx {
-  private ctx: AudioContext | null = null;
+  /** @type {AudioContext | null} */
+  ctx = null;
   enabled = true;
 
-  private context(): AudioContext | null {
+  /** @returns {AudioContext | null} */
+  context() {
     if (!this.enabled) return null;
     if (!this.ctx) {
-      const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      const Ctor = window.AudioContext ?? /** @type {any} */ (window).webkitAudioContext;
       if (!Ctor) return null;
       this.ctx = new Ctor();
     }
@@ -17,8 +19,11 @@ export class Sfx {
     return this.ctx;
   }
 
-  /** A soft wooden thunk. Pitch drops as the pile gets heavier. */
-  place(heaviness: number): void {
+  /**
+   * A soft wooden thunk. Pitch drops as the pile gets heavier.
+   * @param {number} heaviness
+   */
+  place(heaviness) {
     const ctx = this.context();
     if (!ctx) return;
     const t = ctx.currentTime;
@@ -36,7 +41,7 @@ export class Sfx {
   }
 
   /** Flat little "nope". */
-  reject(): void {
+  reject() {
     const ctx = this.context();
     if (!ctx) return;
     const t = ctx.currentTime;
@@ -53,7 +58,7 @@ export class Sfx {
   }
 
   /** Filtered noise burst for the collapse. */
-  crash(): void {
+  crash() {
     const ctx = this.context();
     if (!ctx) return;
     const t = ctx.currentTime;

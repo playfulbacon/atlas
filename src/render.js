@@ -1,60 +1,53 @@
-import { drawAtlas } from './atlas';
-import type { Camera } from './camera';
-import type { PlacedBody } from './physics';
-import type { ObjectDef, Sprite } from './types';
+import { drawAtlas } from './atlas.js';
+
+/** @typedef {import('./camera.js').Camera} Camera */
+/** @typedef {import('./types.js').ObjectDef} ObjectDef */
+/** @typedef {import('./types.js').Sprite} Sprite */
 
 /** How high you have to stack before the sky runs out. */
 const SPACE_ALTITUDE = 7200;
 
-interface SkyStop {
-  at: number;
-  top: string;
-  bottom: string;
-  ground: string;
-  groundShade: string;
-}
+/**
+ * @typedef {object} SkyStop
+ * @property {number} at
+ * @property {string} top
+ * @property {string} bottom
+ * @property {string} ground
+ * @property {string} groundShade
+ */
 
-const SKY: SkyStop[] = [
+/** @type {SkyStop[]} */
+const SKY = [
   { at: 0.0, top: '#bfe2f5', bottom: '#eaf7fd', ground: '#c9d8a8', groundShade: '#b3c78e' },
   { at: 0.35, top: '#7fb2e0', bottom: '#cbe6f7', ground: '#b8cb9c', groundShade: '#a2ba85' },
   { at: 0.68, top: '#2f4f96', bottom: '#7aa8d8', ground: '#8fa27d', groundShade: '#7b8f6b' },
   { at: 1.0, top: '#080c1e', bottom: '#1b2a52', ground: '#4a5347', groundShade: '#3d453b' },
 ];
 
-interface Star {
-  x: number;
-  y: number;
-  r: number;
-  twinkle: number;
-}
-
-interface Cloud {
-  x: number;
-  y: number;
-  scale: number;
-  puffs: Array<[number, number, number]>;
-}
-
-export interface HeldView {
-  def: ObjectDef;
-  sprite: Sprite;
-  x: number;
-  y: number;
-  angle: number;
-  /** Where it will come to rest, if it can. */
-  restY: number | null;
-  valid: boolean;
-}
+/**
+ * @typedef {object} HeldView
+ * @property {ObjectDef} def
+ * @property {Sprite} sprite
+ * @property {number} x
+ * @property {number} y
+ * @property {number} angle
+ * @property {number | null} restY Where it will come to rest, if it can.
+ * @property {boolean} valid
+ */
 
 export class Renderer {
-  private stars: Star[] = [];
-  private clouds: Cloud[] = [];
+  /** @type {Array<{ x: number, y: number, r: number, twinkle: number }>} */
+  stars = [];
+  /** @type {Array<{ x: number, y: number, scale: number, puffs: Array<[number, number, number]> }>} */
+  clouds = [];
 
-  constructor(private ctx: CanvasRenderingContext2D) {
+  /** @param {CanvasRenderingContext2D} ctx */
+  constructor(ctx) {
+    this.ctx = ctx;
     this.buildBackdrop();
   }
 
-  private buildBackdrop(): void {
+  buildBackdrop() {
     for (let i = 0; i < 220; i++) {
       this.stars.push({
         x: (Math.random() - 0.5) * 9000,
@@ -64,10 +57,15 @@ export class Renderer {
       });
     }
     for (let i = 0; i < 70; i++) {
-      const puffs: Array<[number, number, number]> = [];
+      /** @type {Array<[number, number, number]>} */
+      const puffs = [];
       const n = 3 + Math.floor(Math.random() * 3);
       for (let p = 0; p < n; p++) {
-        puffs.push([(p - (n - 1) / 2) * 70 + (Math.random() - 0.5) * 30, (Math.random() - 0.5) * 26, 46 + Math.random() * 38]);
+        puffs.push([
+          (p - (n - 1) / 2) * 70 + (Math.random() - 0.5) * 30,
+          (Math.random() - 0.5) * 26,
+          46 + Math.random() * 38,
+        ]);
       }
       this.clouds.push({
         x: (Math.random() - 0.5) * 7000,
@@ -78,13 +76,14 @@ export class Renderer {
     }
   }
 
-  draw(
-    camera: Camera,
-    bodies: PlacedBody[],
-    held: HeldView | null,
-    strain: number,
-    time: number,
-  ): void {
+  /**
+   * @param {Camera} camera
+   * @param {any[]} bodies
+   * @param {HeldView | null} held
+   * @param {number} strain
+   * @param {number} time
+   */
+  draw(camera, bodies, held, strain, time) {
     const ctx = this.ctx;
     const { width, height } = camera.view;
     const altitude = clamp01(-(camera.y - camera.half) / SPACE_ALTITUDE);
@@ -117,7 +116,12 @@ export class Renderer {
     ctx.restore();
   }
 
-  private drawStars(altitude: number, time: number, view: ReturnType<Camera['bounds']>): void {
+  /**
+   * @param {number} altitude
+   * @param {number} time
+   * @param {ReturnType<Camera['bounds']>} view
+   */
+  drawStars(altitude, time, view) {
     const ctx = this.ctx;
     const alpha = clamp01((altitude - 0.4) / 0.35);
     ctx.fillStyle = '#ffffff';
@@ -132,7 +136,11 @@ export class Renderer {
     ctx.globalAlpha = 1;
   }
 
-  private drawClouds(altitude: number, view: ReturnType<Camera['bounds']>): void {
+  /**
+   * @param {number} altitude
+   * @param {ReturnType<Camera['bounds']>} view
+   */
+  drawClouds(altitude, view) {
     const ctx = this.ctx;
     const alpha = (1 - clamp01((altitude - 0.45) / 0.4)) * 0.7;
     if (alpha <= 0.01) return;
@@ -156,7 +164,8 @@ export class Renderer {
     ctx.globalAlpha = 1;
   }
 
-  private drawBody(body: PlacedBody): void {
+  /** @param {any} body */
+  drawBody(body) {
     const sprite = body.gameSprite;
     const def = body.gameDef;
     if (!sprite || !def) return;
@@ -170,7 +179,12 @@ export class Renderer {
     ctx.restore();
   }
 
-  private drawHeld(held: HeldView, scale: number, time: number): void {
+  /**
+   * @param {HeldView} held
+   * @param {number} scale
+   * @param {number} time
+   */
+  drawHeld(held, scale, time) {
     const ctx = this.ctx;
     const { sprite, def } = held;
 
@@ -205,8 +219,7 @@ export class Renderer {
       ctx.save();
       ctx.globalAlpha = 0.45;
       ctx.filter = 'blur(2px)';
-      ctx.globalCompositeOperation = 'source-over';
-      blitTinted(ctx, sprite, def.size, '#e0342c');
+      blit(ctx, tintCache(sprite, '#e0342c'), sprite, def.size);
       ctx.restore();
     }
     blit(ctx, sprite.canvas, sprite, def.size);
@@ -214,24 +227,27 @@ export class Renderer {
   }
 }
 
-function blit(
-  ctx: CanvasRenderingContext2D,
-  image: CanvasImageSource,
-  sprite: Sprite,
-  size: number,
-): void {
+/**
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {CanvasImageSource} image
+ * @param {Sprite} sprite
+ * @param {number} size
+ */
+function blit(ctx, image, sprite, size) {
   const d = sprite.draw;
   ctx.drawImage(image, d.x * size, d.y * size, d.w * size, d.h * size);
 }
 
-/** Silhouette in a colour, used for the "you cannot put it there" wash. */
-function blitTinted(ctx: CanvasRenderingContext2D, sprite: Sprite, size: number, colour: string): void {
-  blit(ctx, tintCache(sprite, colour), sprite, size);
-}
+/** @type {WeakMap<Sprite, Map<string, HTMLCanvasElement>>} */
+const tints = new WeakMap();
 
-const tints = new WeakMap<Sprite, Map<string, HTMLCanvasElement>>();
-
-function tintCache(sprite: Sprite, colour: string): HTMLCanvasElement {
+/**
+ * Silhouette in a colour, used for the "you cannot put it there" wash.
+ * @param {Sprite} sprite
+ * @param {string} colour
+ * @returns {HTMLCanvasElement}
+ */
+function tintCache(sprite, colour) {
   let bucket = tints.get(sprite);
   if (!bucket) { bucket = new Map(); tints.set(sprite, bucket); }
   let canvas = bucket.get(colour);
@@ -239,7 +255,7 @@ function tintCache(sprite: Sprite, colour: string): HTMLCanvasElement {
     canvas = document.createElement('canvas');
     canvas.width = sprite.silhouette.width;
     canvas.height = sprite.silhouette.height;
-    const c = canvas.getContext('2d')!;
+    const c = /** @type {CanvasRenderingContext2D} */ (canvas.getContext('2d'));
     c.drawImage(sprite.silhouette, 0, 0);
     c.globalCompositeOperation = 'source-in';
     c.fillStyle = colour;
@@ -249,7 +265,11 @@ function tintCache(sprite: Sprite, colour: string): HTMLCanvasElement {
   return canvas;
 }
 
-function skyAt(t: number): SkyStop {
+/**
+ * @param {number} t
+ * @returns {SkyStop}
+ */
+function skyAt(t) {
   let lo = SKY[0];
   let hi = SKY[SKY.length - 1];
   for (let i = 0; i < SKY.length - 1; i++) {
@@ -266,7 +286,11 @@ function skyAt(t: number): SkyStop {
   };
 }
 
-function mixHex(a: string, b: string, t: number): string {
+/**
+ * @param {string} a @param {string} b @param {number} t
+ * @returns {string}
+ */
+function mixHex(a, b, t) {
   const pa = parseInt(a.slice(1), 16);
   const pb = parseInt(b.slice(1), 16);
   const r = Math.round((((pa >> 16) & 255) * (1 - t)) + (((pb >> 16) & 255) * t));
@@ -275,6 +299,7 @@ function mixHex(a: string, b: string, t: number): string {
   return `rgb(${r},${g},${bl})`;
 }
 
-function clamp01(v: number): number {
+/** @param {number} v @returns {number} */
+function clamp01(v) {
   return v < 0 ? 0 : v > 1 ? 1 : v;
 }

@@ -1,4 +1,4 @@
-import { GROUND_Y, PLATFORM_HALF } from './physics';
+import { GROUND_Y, PLATFORM_HALF } from './physics.js';
 
 /**
  * Atlas is drawn, not simulated. The one rule: the top edge of this artwork is
@@ -12,31 +12,31 @@ const SKIN_SHADE = '#d9a273';
 const HAIR = '#e4e0d8';
 const INK = '#1f1b17';
 
-export interface AtlasStyle {
-  ground: string;
-  groundShade: string;
-}
+/** @typedef {{ ground: string, groundShade: string }} AtlasStyle */
+/** @typedef {{ points: Array<[number, number]>, width: number }} Limb */
 
-interface Limb {
-  points: Array<[number, number]>;
-  width: number;
-}
-
-/** Thigh out to the knee, then shin back in — an angular, straining squat. */
-const LEGS: Limb[] = [
+/**
+ * Thigh out to the knee, then shin back in — an angular, straining squat.
+ * @type {Limb[]}
+ */
+const LEGS = [
   { points: [[-48, 138], [-114, 190]], width: 34 },
   { points: [[-114, 190], [-98, 238]], width: 28 },
   { points: [[48, 138], [114, 190]], width: 34 },
   { points: [[114, 190], [98, 238]], width: 28 },
 ];
 
-const FEET: Limb[] = [
+/** @type {Limb[]} */
+const FEET = [
   { points: [[-100, 238], [-142, 238]], width: 22 },
   { points: [[100, 238], [142, 238]], width: 22 },
 ];
 
-/** Hands + forearms + arched shoulders, as one silhouette with a dead-flat top. */
-function shelfPath(ctx: CanvasRenderingContext2D): void {
+/**
+ * Hands + forearms + arched shoulders, as one silhouette with a dead-flat top.
+ * @param {CanvasRenderingContext2D} ctx
+ */
+function shelfPath(ctx) {
   const w = PLATFORM_HALF;
   ctx.beginPath();
   ctx.moveTo(-w, 0);
@@ -53,8 +53,11 @@ function shelfPath(ctx: CanvasRenderingContext2D): void {
   ctx.closePath();
 }
 
-/** Chest and belly, hanging below the shoulders. */
-function torsoPath(ctx: CanvasRenderingContext2D): void {
+/**
+ * Chest and belly, hanging below the shoulders.
+ * @param {CanvasRenderingContext2D} ctx
+ */
+function torsoPath(ctx) {
   ctx.beginPath();
   ctx.moveTo(-64, 36);
   ctx.bezierCurveTo(-72, 74, -62, 112, -54, 132);
@@ -64,7 +67,11 @@ function torsoPath(ctx: CanvasRenderingContext2D): void {
   ctx.closePath();
 }
 
-function limbPath(ctx: CanvasRenderingContext2D, limb: Limb): void {
+/**
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Limb} limb
+ */
+function limbPath(ctx, limb) {
   ctx.beginPath();
   const [first, ...rest] = limb.points;
   ctx.moveTo(first[0], first[1]);
@@ -75,17 +82,19 @@ function limbPath(ctx: CanvasRenderingContext2D, limb: Limb): void {
   }
 }
 
-export interface AtlasOptions {
-  /** 0 = fresh and confident, 1 = holding up a solar system. */
-  strain: number;
-  /** Seconds since the run began, for the tremble. */
-  time: number;
-  /** Camera scale, so outlines keep a sane on-screen thickness. */
-  scale: number;
-  style: AtlasStyle;
-}
+/**
+ * @typedef {object} AtlasOptions
+ * @property {number} strain 0 = fresh and confident, 1 = holding up a solar system.
+ * @property {number} time   Seconds since the run began, for the tremble.
+ * @property {number} scale  Camera scale, so outlines keep a sane on-screen thickness.
+ * @property {AtlasStyle} style
+ */
 
-export function drawAtlas(ctx: CanvasRenderingContext2D, opts: AtlasOptions): void {
+/**
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {AtlasOptions} opts
+ */
+export function drawAtlas(ctx, opts) {
   const { strain, time, scale, style } = opts;
   const ink = Math.max(3.4, 1.5 / scale);
 
@@ -142,7 +151,12 @@ export function drawAtlas(ctx: CanvasRenderingContext2D, opts: AtlasOptions): vo
   ctx.restore();
 }
 
-function drawGround(ctx: CanvasRenderingContext2D, style: AtlasStyle, ink: number): void {
+/**
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {AtlasStyle} style
+ * @param {number} ink
+ */
+function drawGround(ctx, style, ink) {
   const reach = 24000;
   ctx.fillStyle = style.ground;
   ctx.fillRect(-reach, GROUND_Y, reach * 2, reach);
@@ -156,7 +170,12 @@ function drawGround(ctx: CanvasRenderingContext2D, style: AtlasStyle, ink: numbe
   ctx.stroke();
 }
 
-function drawHead(ctx: CanvasRenderingContext2D, strain: number, ink: number): void {
+/**
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} strain
+ * @param {number} ink
+ */
+function drawHead(ctx, strain, ink) {
   ctx.save();
   ctx.translate(0, 106);
   ctx.strokeStyle = INK;
@@ -225,7 +244,11 @@ function drawHead(ctx: CanvasRenderingContext2D, strain: number, ink: number): v
   ctx.restore();
 }
 
-function drawShelfDetail(ctx: CanvasRenderingContext2D, ink: number): void {
+/**
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} ink
+ */
+function drawShelfDetail(ctx, ink) {
   ctx.strokeStyle = SKIN_SHADE;
   ctx.lineWidth = ink * 0.85;
   ctx.lineCap = 'round';
@@ -253,7 +276,13 @@ function drawShelfDetail(ctx: CanvasRenderingContext2D, ink: number): void {
   }
 }
 
-function drawEffort(ctx: CanvasRenderingContext2D, strain: number, time: number, ink: number): void {
+/**
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {number} strain
+ * @param {number} time
+ * @param {number} ink
+ */
+function drawEffort(ctx, strain, time, ink) {
   ctx.strokeStyle = '#5f9fd4';
   ctx.fillStyle = '#a9dcf7';
   ctx.lineWidth = ink * 0.9;

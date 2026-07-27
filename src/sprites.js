@@ -1,5 +1,8 @@
-import type { ObjectDef, Sprite, Vec } from './types';
-import { spriteUrl } from './catalog';
+import { spriteUrl } from './catalog.js';
+
+/** @typedef {import('./types.js').ObjectDef} ObjectDef */
+/** @typedef {import('./types.js').Sprite} Sprite */
+/** @typedef {import('./types.js').Vec} Vec */
 
 /**
  * Turns an image file into a physics-ready sprite by tracing its own alpha
@@ -18,9 +21,14 @@ const ALPHA_THRESHOLD = 40;
 /** Outlines above this get simplified harder; convex decomposition hates detail. */
 const MAX_HULL_POINTS = 18;
 
-const cache = new Map<string, Promise<Sprite>>();
+/** @type {Map<string, Promise<Sprite>>} */
+const cache = new Map();
 
-export function loadSprite(def: ObjectDef): Promise<Sprite> {
+/**
+ * @param {ObjectDef} def
+ * @returns {Promise<Sprite>}
+ */
+export function loadSprite(def) {
   const url = spriteUrl(def);
   let pending = cache.get(url);
   if (!pending) {
@@ -30,11 +38,19 @@ export function loadSprite(def: ObjectDef): Promise<Sprite> {
   return pending;
 }
 
-export async function preload(defs: readonly ObjectDef[]): Promise<void> {
+/**
+ * @param {readonly ObjectDef[]} defs
+ * @returns {Promise<void>}
+ */
+export async function preload(defs) {
   await Promise.all(defs.map((d) => loadSprite(d).catch(() => undefined)));
 }
 
-async function build(url: string): Promise<Sprite> {
+/**
+ * @param {string} url
+ * @returns {Promise<Sprite>}
+ */
+async function build(url) {
   const image = await loadImage(url);
 
   // Rasterise with the longest side at RASTER px.
@@ -45,7 +61,9 @@ async function build(url: string): Promise<Sprite> {
   const canvas = document.createElement('canvas');
   canvas.width = rw;
   canvas.height = rh;
-  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
+  const ctx = /** @type {CanvasRenderingContext2D} */ (
+    canvas.getContext('2d', { willReadFrequently: true })
+  );
   ctx.drawImage(image, 0, 0, rw, rh);
 
   const { data } = ctx.getImageData(0, 0, rw, rh);
@@ -87,11 +105,13 @@ async function build(url: string): Promise<Sprite> {
   const k = 1 / Math.max(cropW, cropH);
   const cx = minX + cropW / 2;
   const cy = minY + cropH / 2;
-  const toLocal = (p: Vec): Vec => ({ x: (p.x - cx) * k, y: (p.y - cy) * k });
+  /** @param {Vec} p @returns {Vec} */
+  const toLocal = (p) => ({ x: (p.x - cx) * k, y: (p.y - cy) * k });
 
   const traced = traceContour(mask, rw, rh);
-  let hull: Vec[];
-  let convexFallback: boolean;
+  /** @type {Vec[]} */
+  let hull;
+  let convexFallback;
 
   if (traced.length >= 8) {
     hull = simplifyToBudget(traced, MAX_HULL_POINTS).map(toLocal);
@@ -120,12 +140,16 @@ async function build(url: string): Promise<Sprite> {
   };
 }
 
-/** Same pixels, flattened to one dark colour, for the landing shadow. */
-function makeSilhouette(source: HTMLCanvasElement): HTMLCanvasElement {
+/**
+ * Same pixels, flattened to one dark colour, for the landing shadow.
+ * @param {HTMLCanvasElement} source
+ * @returns {HTMLCanvasElement}
+ */
+function makeSilhouette(source) {
   const out = document.createElement('canvas');
   out.width = source.width;
   out.height = source.height;
-  const ctx = out.getContext('2d')!;
+  const ctx = /** @type {CanvasRenderingContext2D} */ (out.getContext('2d'));
   ctx.drawImage(source, 0, 0);
   ctx.globalCompositeOperation = 'source-in';
   ctx.fillStyle = '#000';
@@ -136,10 +160,13 @@ function makeSilhouette(source: HTMLCanvasElement): HTMLCanvasElement {
 /**
  * SVGs without explicit width/height can rasterise at a browser default size,
  * so give them one from the viewBox before handing them to an <img>.
+ * @param {string} url
+ * @returns {Promise<HTMLImageElement>}
  */
-async function loadImage(url: string): Promise<HTMLImageElement> {
+async function loadImage(url) {
   let src = url;
-  let objectUrl: string | undefined;
+  /** @type {string | undefined} */
+  let objectUrl;
 
   if (url.endsWith('.svg')) {
     try {
@@ -155,8 +182,8 @@ async function loadImage(url: string): Promise<HTMLImageElement> {
   try {
     const img = new Image();
     img.decoding = 'async';
-    await new Promise<void>((resolve, reject) => {
-      img.onload = () => resolve();
+    await new Promise((resolve, reject) => {
+      img.onload = () => resolve(undefined);
       img.onerror = () => reject(new Error(`could not load ${url}`));
       img.src = src;
     });
@@ -164,11 +191,15 @@ async function loadImage(url: string): Promise<HTMLImageElement> {
     return img;
   } finally {
     // Safari needs the blob alive until after decode, so revoke on the next tick.
-    if (objectUrl) setTimeout(() => URL.revokeObjectURL(objectUrl!), 0);
+    if (objectUrl) setTimeout(() => URL.revokeObjectURL(/** @type {string} */ (objectUrl)), 0);
   }
 }
 
-function ensureSvgSize(svg: string): string {
+/**
+ * @param {string} svg
+ * @returns {string}
+ */
+function ensureSvgSize(svg) {
   if (/<svg[^>]*\swidth\s*=/.test(svg)) return svg;
   const viewBox = /viewBox\s*=\s*["']([^"']+)["']/.exec(svg);
   let w = 256;
@@ -188,16 +219,22 @@ function ensureSvgSize(svg: string): string {
 /* Contour tracing                                                     */
 /* ------------------------------------------------------------------ */
 
-const NEIGHBOURS: ReadonlyArray<readonly [number, number]> = [
+/** @type {ReadonlyArray<readonly [number, number]>} */
+const NEIGHBOURS = [
   [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1],
 ];
 
 /**
  * Moore-neighbour boundary tracing. Walks the outside edge of the largest
  * connected blob and returns it as a pixel-resolution polygon.
+ * @param {Uint8Array} mask
+ * @param {number} w
+ * @param {number} h
+ * @returns {Vec[]}
  */
-function traceContour(mask: Uint8Array, w: number, h: number): Vec[] {
-  const solid = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h && mask[y * w + x] === 1;
+function traceContour(mask, w, h) {
+  /** @param {number} x @param {number} y */
+  const solid = (x, y) => x >= 0 && y >= 0 && x < w && y < h && mask[y * w + x] === 1;
 
   let sx = -1;
   let sy = -1;
@@ -208,7 +245,8 @@ function traceContour(mask: Uint8Array, w: number, h: number): Vec[] {
   }
   if (sx < 0) return [];
 
-  const contour: Vec[] = [];
+  /** @type {Vec[]} */
+  const contour = [];
   let cx = sx;
   let cy = sy;
   let backtrack = 4; // we arrived from the west
@@ -237,8 +275,13 @@ function traceContour(mask: Uint8Array, w: number, h: number): Vec[] {
   return contour;
 }
 
-/** Ramp up Douglas–Peucker tolerance until the outline fits the vertex budget. */
-function simplifyToBudget(points: Vec[], budget: number): Vec[] {
+/**
+ * Ramp up Douglas–Peucker tolerance until the outline fits the vertex budget.
+ * @param {Vec[]} points
+ * @param {number} budget
+ * @returns {Vec[]}
+ */
+function simplifyToBudget(points, budget) {
   let epsilon = RASTER / 120;
   let simplified = rdp(points, epsilon);
   for (let i = 0; i < 24 && simplified.length > budget; i++) {
@@ -251,15 +294,21 @@ function simplifyToBudget(points: Vec[], budget: number): Vec[] {
   return isSimplePolygon(simplified) ? simplified : convexHull(points);
 }
 
-function rdp(points: Vec[], epsilon: number): Vec[] {
+/**
+ * @param {Vec[]} points
+ * @param {number} epsilon
+ * @returns {Vec[]}
+ */
+function rdp(points, epsilon) {
   if (points.length < 3) return points.slice();
   const keep = new Uint8Array(points.length);
   keep[0] = 1;
   keep[points.length - 1] = 1;
 
-  const stack: Array<[number, number]> = [[0, points.length - 1]];
+  /** @type {Array<[number, number]>} */
+  const stack = [[0, points.length - 1]];
   while (stack.length) {
-    const [first, last] = stack.pop()!;
+    const [first, last] = /** @type {[number, number]} */ (stack.pop());
     let maxDist = -1;
     let index = -1;
     for (let i = first + 1; i < last; i++) {
@@ -272,7 +321,8 @@ function rdp(points: Vec[], epsilon: number): Vec[] {
     }
   }
 
-  const out: Vec[] = [];
+  /** @type {Vec[]} */
+  const out = [];
   for (let i = 0; i < points.length; i++) if (keep[i]) out.push(points[i]);
   // The trace ends where it began; drop the duplicate closing vertex.
   if (out.length > 1) {
@@ -283,7 +333,11 @@ function rdp(points: Vec[], epsilon: number): Vec[] {
   return out;
 }
 
-function perpendicularDistance(p: Vec, a: Vec, b: Vec): number {
+/**
+ * @param {Vec} p @param {Vec} a @param {Vec} b
+ * @returns {number}
+ */
+function perpendicularDistance(p, a, b) {
   const dx = b.x - a.x;
   const dy = b.y - a.y;
   const lenSq = dx * dx + dy * dy;
@@ -292,18 +346,24 @@ function perpendicularDistance(p: Vec, a: Vec, b: Vec): number {
   return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy));
 }
 
-function convexHull(points: Vec[]): Vec[] {
+/**
+ * @param {Vec[]} points
+ * @returns {Vec[]}
+ */
+function convexHull(points) {
   if (points.length < 3) return points.slice();
   const sorted = points.slice().sort((p, q) => (p.x - q.x) || (p.y - q.y));
-  const cross = (o: Vec, a: Vec, b: Vec) =>
-    (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+  /** @param {Vec} o @param {Vec} a @param {Vec} b */
+  const cross = (o, a, b) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
 
-  const lower: Vec[] = [];
+  /** @type {Vec[]} */
+  const lower = [];
   for (const p of sorted) {
     while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) lower.pop();
     lower.push(p);
   }
-  const upper: Vec[] = [];
+  /** @type {Vec[]} */
+  const upper = [];
   for (let i = sorted.length - 1; i >= 0; i--) {
     const p = sorted[i];
     while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) upper.pop();
@@ -314,8 +374,12 @@ function convexHull(points: Vec[]): Vec[] {
   return lower.concat(upper);
 }
 
-/** Brute-force self-intersection test. Fine at fewer than ~30 vertices. */
-function isSimplePolygon(poly: Vec[]): boolean {
+/**
+ * Brute-force self-intersection test. Fine at fewer than ~30 vertices.
+ * @param {Vec[]} poly
+ * @returns {boolean}
+ */
+function isSimplePolygon(poly) {
   const n = poly.length;
   if (n < 4) return true;
   for (let i = 0; i < n; i++) {
@@ -331,8 +395,13 @@ function isSimplePolygon(poly: Vec[]): boolean {
   return true;
 }
 
-function segmentsIntersect(p1: Vec, p2: Vec, p3: Vec, p4: Vec): boolean {
-  const d = (a: Vec, b: Vec, c: Vec) => (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+/**
+ * @param {Vec} p1 @param {Vec} p2 @param {Vec} p3 @param {Vec} p4
+ * @returns {boolean}
+ */
+function segmentsIntersect(p1, p2, p3, p4) {
+  /** @param {Vec} a @param {Vec} b @param {Vec} c */
+  const d = (a, b, c) => (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
   const d1 = d(p3, p4, p1);
   const d2 = d(p3, p4, p2);
   const d3 = d(p1, p2, p3);
@@ -340,7 +409,11 @@ function segmentsIntersect(p1: Vec, p2: Vec, p3: Vec, p4: Vec): boolean {
   return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0));
 }
 
-function boxPoints(minX: number, minY: number, maxX: number, maxY: number): Vec[] {
+/**
+ * @param {number} minX @param {number} minY @param {number} maxX @param {number} maxY
+ * @returns {Vec[]}
+ */
+function boxPoints(minX, minY, maxX, maxY) {
   return [
     { x: minX, y: minY },
     { x: maxX, y: minY },
@@ -349,6 +422,10 @@ function boxPoints(minX: number, minY: number, maxX: number, maxY: number): Vec[
   ];
 }
 
-function isFinitePoly(poly: Vec[]): boolean {
+/**
+ * @param {Vec[]} poly
+ * @returns {boolean}
+ */
+function isFinitePoly(poly) {
   return poly.every((p) => Number.isFinite(p.x) && Number.isFinite(p.y));
 }

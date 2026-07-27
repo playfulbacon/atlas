@@ -6,24 +6,37 @@ a bathtub, an unrequested accordion, eventually the Sun — and you drag each on
 onto the flat shelf made by Atlas' back and raised hands. Every object placed is
 a point. When the pile falls over, that's the run.
 
+**There is no build step.** The repo root *is* the site: `index.html` loads
+`src/*.js` as native ES modules and the two physics libraries from `vendor/` as
+plain scripts. Open it however you like:
+
 ```bash
-npm install
-npm run dev        # play at http://localhost:5173
-npm run build      # static bundle in dist/
+npm run dev        # play at http://localhost:5173 (zero-dependency static server)
 ```
+
+`npm install` is optional — it is only needed for `npm run typecheck` and for
+refreshing `vendor/`. Nothing is required to run or deploy the game.
 
 ## Deploying
 
-It is a fully static bundle with no runtime network calls — all artwork is
-vendored into the repo — so any static host works.
+Push. That is the whole process.
 
-For **GitHub Pages**, [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)
-builds and publishes on every push to `main`. Enable it once under
-*Settings → Pages → Build and deployment → Source: **GitHub Actions***.
+For **GitHub Pages**, set *Settings → Pages → Build and deployment →
+Source: **Deploy from a branch***, pick the branch and `/ (root)`. No workflow,
+no artifact, no build.
 
-`vite.config.ts` sets `base: './'`, so the bundle is path-agnostic: it works at
-a user page (`user.github.io`), a project page (`user.github.io/atlas/`) or any
-subdirectory, with no configuration.
+Every path in the game resolves relative to the module that asks for it
+(`new URL('…', import.meta.url)`), so it works unchanged at a user page, a
+project page (`user.github.io/atlas/`), a nested subdirectory, or `file://`.
+There are no runtime network calls at all — every sprite is vendored into the
+repo, so the game works offline once loaded.
+
+## Type checking without a build
+
+The source is plain JavaScript annotated with JSDoc. `npm run typecheck` runs
+TypeScript over it (`checkJs`, `strict`) and catches the same class of mistakes
+a `.ts` codebase would — it just never emits anything, and the browser runs the
+files you actually wrote.
 
 ## How it plays
 
@@ -52,12 +65,12 @@ The catalog is data. To add one:
    `art` is either `{ "openmoji": "<hexcode>" }` (fetched from the OpenMoji CDN)
    or `{ "custom": "<name>" }` (a file in `assets/custom/<name>.svg`).
 
-2. `npm run assets` — vendors the artwork into `public/assets/objects/<id>.svg`.
+2. `npm run assets` — vendors the artwork into `assets/objects/<id>.svg`.
 
 That is the whole process. **No collision shape is authored by hand:** at load
 time each sprite is rasterised, its alpha channel is traced with Moore-neighbour
 boundary following, simplified with Douglas–Peucker, and handed to `poly-decomp`
-for convex decomposition (see [`src/sprites.ts`](src/sprites.ts)). Anything that
+for convex decomposition (see [`src/sprites.js`](src/sprites.js)). Anything that
 fails to decompose cleanly falls back to its convex hull, so a bad outline
 degrades instead of breaking.
 
@@ -80,14 +93,17 @@ does not turn the pile beneath it into soup.
 
 | file | what it does |
 | --- | --- |
-| `src/sprites.ts` | rasterises art, traces collision outlines from pixels |
-| `src/physics.ts` | Matter.js world, body construction, drop projection |
-| `src/camera.ts` | framing — keeps guaranteed empty space above the pile |
-| `src/atlas.ts` | Atlas himself, drawn in canvas vectors |
-| `src/render.ts` | sky, clouds, stars, sprites, landing shadow |
-| `src/input.ts` | one-finger drag, two-finger rotate, wheel and keys |
-| `src/game.ts` | run state, placement rules, topple detection |
+| `src/sprites.js` | rasterises art, traces collision outlines from pixels |
+| `src/physics.js` | Matter.js world, body construction, drop projection |
+| `src/camera.js` | framing — keeps guaranteed empty space above the pile |
+| `src/atlas.js` | Atlas himself, drawn in canvas vectors |
+| `src/render.js` | sky, clouds, stars, sprites, landing shadow |
+| `src/input.js` | one-finger drag, two-finger rotate, wheel and keys |
+| `src/game.js` | run state, placement rules, topple detection |
+| `vendor/` | Matter.js + poly-decomp browser builds, loaded as plain scripts |
 | `scripts/fetch-assets.mjs` | vendors artwork; also validates the catalog |
+| `scripts/vendor-libs.mjs` | refreshes `vendor/` from `node_modules` |
+| `scripts/serve.mjs` | dependency-free local server for `npm run dev` |
 
 ## Credits
 

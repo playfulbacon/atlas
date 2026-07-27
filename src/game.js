@@ -1,11 +1,11 @@
-import Matter from 'matter-js';
-import { Sfx } from './audio';
-import { Camera } from './camera';
-import { CATALOG, pickNext } from './catalog';
-import { InputController } from './input';
+import { Sfx } from './audio.js';
+import { Camera } from './camera.js';
+import { CATALOG, pickNext } from './catalog.js';
+import { InputController } from './input.js';
 import {
   Body,
   Composite,
+  Matter,
   createEngine,
   createGround,
   createObjectBody,
@@ -15,25 +15,26 @@ import {
   projectDrop,
   TOPPLE_X,
   TOPPLE_Y,
-  type PlacedBody,
-} from './physics';
-import { Renderer, type HeldView } from './render';
-import { loadSprite, preload } from './sprites';
-import type { ObjectDef, Sprite } from './types';
+} from './physics.js';
+import { Renderer } from './render.js';
+import { loadSprite, preload } from './sprites.js';
 
-type Phase = 'title' | 'playing' | 'toppling' | 'over';
+/** @typedef {import('./types.js').ObjectDef} ObjectDef */
+/** @typedef {import('./types.js').Sprite} Sprite */
+/** @typedef {import('./render.js').HeldView} HeldView */
+/** @typedef {'title' | 'playing' | 'toppling' | 'over'} Phase */
 
-interface Held {
-  def: ObjectDef;
-  sprite: Sprite;
-  /** Built up front so overlap tests use the exact shape that will be placed. */
-  body: PlacedBody;
-  x: number;
-  y: number;
-  angle: number;
-  restY: number | null;
-  valid: boolean;
-}
+/**
+ * @typedef {object} Held
+ * @property {ObjectDef} def
+ * @property {Sprite} sprite
+ * @property {any} body Built up front so overlap tests use the exact shape that will be placed.
+ * @property {number} x
+ * @property {number} y
+ * @property {number} angle
+ * @property {number | null} restY
+ * @property {boolean} valid
+ */
 
 const FIXED_STEP = 1000 / 60;
 /** Objects remembered so the same fridge does not turn up twice in a row. */
@@ -47,34 +48,32 @@ const COLLAPSE_NOTES = [
   'The pile has voted.',
 ];
 
-export interface GameDeps {
-  canvas: HTMLCanvasElement;
-  ui: import('./ui').UI;
-}
-
 export class Game {
-  private ctx: CanvasRenderingContext2D;
-  private engine = createEngine();
-  private platform = createPlatform();
-  private placed: PlacedBody[] = [];
-  private camera = new Camera();
-  private renderer: Renderer;
-  private input: InputController;
-  private sfx = new Sfx();
+  engine = createEngine();
+  platform = createPlatform();
+  /** @type {any[]} */
+  placed = [];
+  camera = new Camera();
+  sfx = new Sfx();
 
-  private phase: Phase = 'title';
-  private score = 0;
-  private totalWeight = 0;
-  private recent: string[] = [];
-  private held: Held | null = null;
-  private time = 0;
-  private accumulator = 0;
-  private lastFrame = 0;
-  private collapseAt = 0;
-  private dpr = 1;
+  /** @type {Phase} */
+  phase = 'title';
+  score = 0;
+  totalWeight = 0;
+  /** @type {string[]} */
+  recent = [];
+  /** @type {Held | null} */
+  held = null;
+  time = 0;
+  accumulator = 0;
+  lastFrame = 0;
+  collapseAt = 0;
+  dpr = 1;
 
-  constructor(private deps: GameDeps) {
-    this.ctx = deps.canvas.getContext('2d')!;
+  /** @param {{ canvas: HTMLCanvasElement, ui: import('./ui.js').UI }} deps */
+  constructor(deps) {
+    this.deps = deps;
+    this.ctx = /** @type {CanvasRenderingContext2D} */ (deps.canvas.getContext('2d'));
     this.renderer = new Renderer(this.ctx);
     this.input = new InputController(deps.canvas);
     this.input.onRelease = () => this.release();
@@ -93,15 +92,16 @@ export class Game {
     void preload(CATALOG.filter((o) => o.tier <= 2));
   }
 
-  setSound(on: boolean): void {
+  /** @param {boolean} on */
+  setSound(on) {
     this.sfx.enabled = on;
   }
 
-  rotateStep(): void {
+  rotateStep() {
     this.input.rotateBy(Math.PI / 12);
   }
 
-  async begin(): Promise<void> {
+  async begin() {
     // Clear the world back to just Atlas' platform.
     for (const body of this.placed) Composite.remove(this.engine.world, body);
     this.placed = [];
@@ -125,12 +125,14 @@ export class Game {
     await this.spawnNext();
   }
 
-  private async spawnNext(attempt = 0): Promise<void> {
+  /** @param {number} [attempt] */
+  async spawnNext(attempt = 0) {
     const def = pickNext(this.score, this.recent);
     this.recent.push(def.id);
     if (this.recent.length > RECENT_MEMORY) this.recent.shift();
 
-    let sprite: Sprite;
+    /** @type {Sprite} */
+    let sprite;
     try {
       sprite = await loadSprite(def);
     } catch {
@@ -156,7 +158,7 @@ export class Game {
 
   /* ---------------------------------------------------------------- */
 
-  private resize(): void {
+  resize() {
     const { canvas } = this.deps;
     this.dpr = Math.min(window.devicePixelRatio || 1, 2);
     const width = canvas.clientWidth || window.innerWidth;
@@ -170,7 +172,8 @@ export class Game {
     };
   }
 
-  loop = (now: number): void => {
+  /** @param {number} now */
+  loop = (now) => {
     const dt = this.lastFrame ? Math.min(0.05, (now - this.lastFrame) / 1000) : 1 / 60;
     this.lastFrame = now;
     this.time += dt;
@@ -180,7 +183,8 @@ export class Game {
     requestAnimationFrame(this.loop);
   };
 
-  private update(dt: number): void {
+  /** @param {number} dt */
+  update(dt) {
     if (this.phase === 'playing') this.updateHeld();
 
     // Fixed-step physics with a bounded catch-up.
@@ -208,7 +212,7 @@ export class Game {
   }
 
   /** Follow the pointer, then work out where the object would land. */
-  private updateHeld(): void {
+  updateHeld() {
     const held = this.held;
     if (!held) return;
     this.deps.ui.setDragging(this.input.dragging);
@@ -239,7 +243,7 @@ export class Game {
     held.restY = result.status === 'ok' ? result.restY : null;
   }
 
-  private release(): void {
+  release() {
     const held = this.held;
     if (!held || this.phase !== 'playing') return;
     this.deps.ui.setDragging(false);
@@ -274,7 +278,8 @@ export class Game {
     void this.spawnNext();
   }
 
-  private hasToppled(): boolean {
+  /** @returns {boolean} */
+  hasToppled() {
     for (const body of this.placed) {
       if (body.position.y > TOPPLE_Y) return true;
       if (Math.abs(body.position.x) > TOPPLE_X) return true;
@@ -282,7 +287,7 @@ export class Game {
     return false;
   }
 
-  private collapse(): void {
+  collapse() {
     this.phase = 'toppling';
     this.collapseAt = this.time;
     this.input.enabled = false;
@@ -293,7 +298,7 @@ export class Game {
   }
 
   /** Camera keeps the pile framed with guaranteed empty room above it. */
-  private frameCamera(): void {
+  frameCamera() {
     let top = PLATFORM_TOP;
     for (const body of this.placed) top = Math.min(top, body.bounds.min.y);
 
@@ -306,20 +311,24 @@ export class Game {
     this.camera.frame(top, bottom, headroom);
   }
 
-  /** 0 → fresh, 1 → visibly regretting everything. */
-  private strain(): number {
+  /**
+   * 0 → fresh, 1 → visibly regretting everything.
+   * @returns {number}
+   */
+  strain() {
     const byCount = this.score / 26;
     const byMass = Math.log10(this.totalWeight + 1) / 9;
     return clamp(Math.max(byCount, byMass) * 0.85 + 0.05, 0, 1);
   }
 
-  private render(): void {
+  render() {
     const ctx = this.ctx;
     ctx.save();
     ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
 
     const held = this.held;
-    const view: HeldView | null =
+    /** @type {HeldView | null} */
+    const view =
       held && this.input.dragging
         ? {
             def: held.def,
@@ -337,12 +346,20 @@ export class Game {
   }
 }
 
-function lowestOf(bodies: PlacedBody[]): number {
+/**
+ * @param {any[]} bodies
+ * @returns {number}
+ */
+function lowestOf(bodies) {
   let low = 0;
   for (const body of bodies) low = Math.max(low, body.bounds.max.y);
   return low;
 }
 
-function clamp(v: number, lo: number, hi: number): number {
+/**
+ * @param {number} v @param {number} lo @param {number} hi
+ * @returns {number}
+ */
+function clamp(v, lo, hi) {
   return v < lo ? lo : v > hi ? hi : v;
 }

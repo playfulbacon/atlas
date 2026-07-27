@@ -4,21 +4,22 @@
   "version": "1.0.0",
   "type": "module",
   "description": "A silly physics game about stacking the world's junk on the back of Atlas.",
+  "comments": {
+    "no-build": "The repo root IS the site. No bundler: index.html loads src/*.js as native ES modules and vendor/*.js as classic scripts. Nothing below is needed to run or deploy the game.",
+    "dependencies": "Vendored into vendor/ by `npm run vendor`; listed here to pin the versions."
+  },
   "scripts": {
-    "dev": "vite",
-    "build": "tsc --noEmit && vite build",
-    "preview": "vite preview",
-    "typecheck": "tsc --noEmit",
+    "dev": "node scripts/serve.mjs",
+    "typecheck": "tsc -p jsconfig.json",
     "assets": "node scripts/fetch-assets.mjs",
-    "assets:check": "node scripts/fetch-assets.mjs --check"
+    "assets:check": "node scripts/fetch-assets.mjs --check",
+    "vendor": "node scripts/vendor-libs.mjs"
   },
   "dependencies": {
     "matter-js": "^0.20.0",
     "poly-decomp": "^0.3.0"
   },
   "devDependencies": {
-    "@types/matter-js": "^0.19.8",
-    "typescript": "^5.6.3",
-    "vite": "^5.4.10"
+    "typescript": "^5.6.3"
   }
 }

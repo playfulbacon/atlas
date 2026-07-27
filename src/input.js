@@ -1,11 +1,5 @@
-import type { Vec } from './types';
-
-interface Tracked {
-  id: number;
-  x: number;
-  y: number;
-  type: string;
-}
+/** @typedef {import('./types.js').Vec} Vec */
+/** @typedef {{ id: number, x: number, y: number, type: string }} Tracked */
 
 /**
  * Drag with one finger, rotate with two. Mouse users get the wheel and Q/E.
@@ -13,22 +7,28 @@ interface Tracked {
  */
 export class InputController {
   dragging = false;
-  /** Latest primary-pointer position in CSS pixels, relative to the canvas. */
-  pointer: Vec = { x: 0, y: 0 };
+  /** Latest primary-pointer position in CSS pixels, relative to the canvas. @type {Vec} */
+  pointer = { x: 0, y: 0 };
   angle = 0;
-  /** True while a touch is driving the drag, so the game can lift the object clear of the finger. */
+  /** True while a touch drives the drag, so the game can lift the object clear of the finger. */
   touchDrag = false;
   enabled = true;
 
-  onRelease?: () => void;
+  /** @type {(() => void) | undefined} */
+  onRelease;
 
-  private pointers = new Map<number, Tracked>();
-  private primaryId: number | null = null;
-  private rotateId: number | null = null;
-  private rotateBaseline = 0;
-  private angleBaseline = 0;
+  /** @type {Map<number, Tracked>} */
+  pointers = new Map();
+  /** @type {number | null} */
+  primaryId = null;
+  /** @type {number | null} */
+  rotateId = null;
+  rotateBaseline = 0;
+  angleBaseline = 0;
 
-  constructor(private element: HTMLElement) {
+  /** @param {HTMLElement} element */
+  constructor(element) {
+    this.element = element;
     element.addEventListener('pointerdown', this.handleDown);
     element.addEventListener('pointermove', this.handleMove);
     element.addEventListener('pointerup', this.handleUp);
@@ -36,11 +36,11 @@ export class InputController {
     element.addEventListener('wheel', this.handleWheel, { passive: false });
     window.addEventListener('keydown', this.handleKey);
     // Two-finger gestures on the canvas should rotate, not zoom the page.
-    element.addEventListener('gesturestart', preventDefault as EventListener);
-    element.addEventListener('contextmenu', preventDefault as EventListener);
+    element.addEventListener('gesturestart', preventDefault);
+    element.addEventListener('contextmenu', preventDefault);
   }
 
-  destroy(): void {
+  destroy() {
     this.element.removeEventListener('pointerdown', this.handleDown);
     this.element.removeEventListener('pointermove', this.handleMove);
     this.element.removeEventListener('pointerup', this.handleUp);
@@ -49,12 +49,15 @@ export class InputController {
     window.removeEventListener('keydown', this.handleKey);
   }
 
-  /** Used by the on-screen rotate button, for one-handed play. */
-  rotateBy(delta: number): void {
+  /**
+   * Used by the on-screen rotate button, for one-handed play.
+   * @param {number} delta
+   */
+  rotateBy(delta) {
     this.angle += delta;
   }
 
-  reset(): void {
+  reset() {
     this.angle = 0;
     this.dragging = false;
     this.touchDrag = false;
@@ -63,12 +66,17 @@ export class InputController {
     this.pointers.clear();
   }
 
-  private local(event: PointerEvent): Vec {
+  /**
+   * @param {PointerEvent} event
+   * @returns {Vec}
+   */
+  local(event) {
     const rect = this.element.getBoundingClientRect();
     return { x: event.clientX - rect.left, y: event.clientY - rect.top };
   }
 
-  private handleDown = (event: PointerEvent): void => {
+  /** @param {PointerEvent} event */
+  handleDown = (event) => {
     if (!this.enabled) return;
     const p = this.local(event);
     this.pointers.set(event.pointerId, { id: event.pointerId, x: p.x, y: p.y, type: event.pointerType });
@@ -87,7 +95,8 @@ export class InputController {
     event.preventDefault();
   };
 
-  private handleMove = (event: PointerEvent): void => {
+  /** @param {PointerEvent} event */
+  handleMove = (event) => {
     const tracked = this.pointers.get(event.pointerId);
     if (!tracked) return;
     const p = this.local(event);
@@ -101,7 +110,8 @@ export class InputController {
     event.preventDefault();
   };
 
-  private handleUp = (event: PointerEvent): void => {
+  /** @param {PointerEvent} event */
+  handleUp = (event) => {
     if (!this.pointers.has(event.pointerId)) return;
     this.pointers.delete(event.pointerId);
     this.element.releasePointerCapture?.(event.pointerId);
@@ -119,7 +129,7 @@ export class InputController {
         this.onRelease?.();
       }
       // A finger still down becomes the new primary, so the drag can continue.
-      const remaining = this.pointers.values().next().value as Tracked | undefined;
+      const remaining = this.pointers.values().next().value;
       if (remaining && this.enabled) {
         this.primaryId = remaining.id;
         this.pointer = { x: remaining.x, y: remaining.y };
@@ -127,13 +137,15 @@ export class InputController {
     }
   };
 
-  private handleWheel = (event: WheelEvent): void => {
+  /** @param {WheelEvent} event */
+  handleWheel = (event) => {
     if (!this.enabled) return;
     this.angle += Math.sign(event.deltaY) * 0.09;
     event.preventDefault();
   };
 
-  private handleKey = (event: KeyboardEvent): void => {
+  /** @param {KeyboardEvent} event */
+  handleKey = (event) => {
     if (!this.enabled) return;
     switch (event.key) {
       case 'q': case 'Q': case 'ArrowLeft':
@@ -148,8 +160,11 @@ export class InputController {
     event.preventDefault();
   };
 
-  /** Angle of the line between the two active pointers. */
-  private spanAngle(): number {
+  /**
+   * Angle of the line between the two active pointers.
+   * @returns {number}
+   */
+  spanAngle() {
     if (this.primaryId === null || this.rotateId === null) return this.rotateBaseline;
     const a = this.pointers.get(this.primaryId);
     const b = this.pointers.get(this.rotateId);
@@ -158,13 +173,18 @@ export class InputController {
   }
 }
 
-function shortestDelta(from: number, to: number): number {
+/**
+ * @param {number} from @param {number} to
+ * @returns {number}
+ */
+function shortestDelta(from, to) {
   let d = to - from;
   while (d > Math.PI) d -= Math.PI * 2;
   while (d < -Math.PI) d += Math.PI * 2;
   return d;
 }
 
-function preventDefault(event: Event): void {
+/** @param {Event} event */
+function preventDefault(event) {
   event.preventDefault();
 }
