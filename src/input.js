@@ -49,14 +49,6 @@ export class InputController {
     window.removeEventListener('keydown', this.handleKey);
   }
 
-  /**
-   * Used by the on-screen rotate button, for one-handed play.
-   * @param {number} delta
-   */
-  rotateBy(delta) {
-    this.angle += delta;
-  }
-
   reset() {
     this.angle = 0;
     this.dragging = false;

@@ -50,8 +50,8 @@ files you actually wrote.
   to it. You may hold the object anywhere — buried in the pile is fine; it
   rises to the first clear spot and the shadow shows the landing from there.
   The only refusal is having nothing underneath at all.
-- **Two fingers** rotate on touch. Scroll wheel, `Q`/`E` or `←`/`→` on desktop,
-  and there is a rotate button for one-handed play.
+- **Two fingers** rotate on touch. Scroll wheel, `Q`/`E` or `←`/`→` on desktop.
+  `R` sets the angle back to zero.
 - The camera pulls back as the pile grows, so there is always room above it for
   the next thing, and Atlas stays planted at the bottom of the screen. Objects
   get larger as your score climbs.
@@ -115,7 +115,7 @@ does not turn the pile beneath it into soup.
 | `src/physics.js` | Matter.js world, body construction, drop projection |
 | `src/camera.js` | framing — keeps guaranteed empty space above the pile |
 | `src/atlas.js` | Atlas himself, drawn in canvas vectors. His back and palms *are* the platform surface |
-| `src/ui.js` | HUD, the object stage, overlays, mass formatting |
+| `src/ui.js` | the object stage, score readouts, overlays, mass formatting |
 | `src/render.js` | sky, clouds, stars, sprites, landing shadow |
 | `src/input.js` | one-finger drag, two-finger rotate, wheel and keys |
 | `src/game.js` | run state, placement rules, topple detection |

@@ -13,7 +13,6 @@ import { GROUND_Y } from './physics.js';
 
 const SKIN = '#e8b88a';
 const SKIN_SHADE = '#d9a273';
-const HAIR = '#e4e0d8';
 const INK = '#1f1b17';
 
 /** @typedef {{ ground: string, groundShade: string }} AtlasStyle */
@@ -186,16 +185,6 @@ function drawHead(ctx, strain, ink) {
   ctx.translate(0, 176);
   ctx.strokeStyle = INK;
   ctx.lineWidth = ink;
-
-  // Beard first, so the face sits on top of it.
-  ctx.fillStyle = HAIR;
-  ctx.beginPath();
-  ctx.moveTo(-43, 36);
-  ctx.bezierCurveTo(-50, 68, -24, 86, 0, 86);
-  ctx.bezierCurveTo(24, 86, 50, 68, 43, 36);
-  ctx.closePath();
-  ctx.fill();
-  ctx.stroke();
 
   ctx.fillStyle = SKIN;
   ctx.beginPath();

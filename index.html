@@ -14,6 +14,10 @@
 
     <div id="tray" class="tray hidden">
       <div class="tray-row">
+        <div class="stat">
+          <span class="stat-label">Objects</span>
+          <span class="stat-value" id="score">0</span>
+        </div>
         <div id="trayCard" class="stage">
           <div class="stage-pedestal">
             <img id="trayImg" class="stage-img" alt="" draggable="false" />
@@ -21,28 +25,22 @@
           <div id="trayName" class="stage-name">&nbsp;</div>
           <div id="trayWeight" class="stage-weight">&nbsp;</div>
         </div>
-        <button id="rotateBtn" class="rotate-btn" type="button" aria-label="Rotate 15 degrees">⟳</button>
+        <div class="stat stat-right">
+          <span class="stat-label">On his back</span>
+          <span class="stat-value" id="weight">0 kg</span>
+        </div>
       </div>
       <p class="tray-hint">
         <span class="hint-drag">Drag anywhere to steer it</span>
-        <span class="hint-rotate">Two fingers to rotate · scroll or Q / E on desktop</span>
+        <span class="hint-rotate">Two fingers to rotate · scroll wheel or Q / E on desktop</span>
       </p>
     </div>
 
     <div id="toast" class="toast"></div>
 
     <div id="hud" class="hud hidden">
-      <div class="stat">
-        <span class="stat-label">Objects</span>
-        <span class="stat-value" id="score">0</span>
-      </div>
-      <div class="hud-right">
-        <button id="soundBtn" class="icon-btn" aria-label="Mute" type="button">🔊</button>
-        <div class="stat stat-right">
-          <span class="stat-label">On his back</span>
-          <span class="stat-value" id="weight">0 kg</span>
-        </div>
-      </div>
+      <button id="hudRestart" class="pill-btn" type="button">Restart</button>
+      <button id="soundBtn" class="icon-btn" aria-label="Mute" type="button">🔊</button>
     </div>
 
     <div id="title" class="overlay">
@@ -62,7 +60,7 @@
           <li>Lift the object out of its stage up top and drag it down onto the load.</li>
           <li>The shadow shows exactly where it will come to rest. Hold it wherever you like, even inside the pile.</li>
           <li>It only needs something underneath it to land on.</li>
-          <li>Two fingers rotate. So does the scroll wheel, or Q&nbsp;/&nbsp;E.</li>
+          <li>Two fingers rotate it. So does the scroll wheel, or Q&nbsp;/&nbsp;E.</li>
           <li>Every object is a point. If the pile falls, that's the run.</li>
         </ul>
         <button id="startBtn" class="big-btn" type="button">Start stacking</button>

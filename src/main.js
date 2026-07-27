@@ -6,7 +6,6 @@ const canvas = /** @type {HTMLCanvasElement} */ (document.getElementById('stage'
 const ui = new UI({
   onStart: () => void game.begin(),
   onRestart: () => void game.begin(),
-  onRotate: () => game.rotateStep(),
   onToggleSound: (on) => game.setSound(on),
 });
 

@@ -47,7 +47,6 @@ function significant(v) {
  * @typedef {object} UIHandlers
  * @property {() => void} onStart
  * @property {() => void} onRestart
- * @property {() => void} onRotate
  * @property {(on: boolean) => void} onToggleSound
  */
 
@@ -78,8 +77,9 @@ export class UI {
     };
 
     byId('startBtn').addEventListener('click', handlers.onStart);
+    // Both the game-over panel and the bottom bar restart a run.
     byId('restartBtn').addEventListener('click', handlers.onRestart);
-    byId('rotateBtn').addEventListener('click', handlers.onRotate);
+    byId('hudRestart').addEventListener('click', handlers.onRestart);
     this.el.sound.addEventListener('click', () => {
       this.soundOn = !this.soundOn;
       this.el.sound.textContent = this.soundOn ? '🔊' : '🔇';

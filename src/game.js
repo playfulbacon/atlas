@@ -100,10 +100,6 @@ export class Game {
     this.sfx.enabled = on;
   }
 
-  rotateStep() {
-    this.input.rotateBy(Math.PI / 12);
-  }
-
   async begin() {
     // Clear the world back to just Atlas' platform.
     for (const body of this.placed) Composite.remove(this.engine.world, body);
