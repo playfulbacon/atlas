@@ -3,7 +3,7 @@
 A silly physics game about balancing the world's junk on the back of a very
 patient titan. Three objects are on offer at any moment — a traffic pylon, a
 refrigerator, a bathtub, an unrequested accordion, eventually the Sun — and you
-steer one of them onto the shelf made by Atlas' back and raised hands. Every
+steer one of them onto Atlas' raised hands, or the dip between them. Every
 object placed is a point. When the pile falls over, that's the run.
 
 One to four players take turns, each carrying the weight they personally added,
@@ -57,7 +57,11 @@ files you actually wrote.
 - The **shadow** shows exactly where it will come to rest, and placement snaps
   to it. You may hold the object anywhere — buried in the pile is fine; it
   rises to the first clear spot and the shadow shows the landing from there.
-  The only refusal is having nothing underneath at all.
+  The two refusals are having nothing underneath at all, and a landing that
+  would put it in the grass.
+- Carriers are not flat. The dip between Atlas' hands is a real place to put
+  something, and so is his knee — anywhere the drawing of him has a surface.
+  A run ends when something ends up on the ground instead of on him.
 - **Two fingers** rotate on touch. Scroll wheel, `Q`/`E` or `←`/`→` on desktop.
   `R` sets the angle back to zero.
 - The camera pulls back as the pile grows, so there is always room above it for
@@ -123,10 +127,10 @@ does not turn the pile beneath it into soup.
 | file | what it does |
 | --- | --- |
 | `src/sprites.js` | rasterises art, traces collision outlines from pixels |
-| `src/physics.js` | Matter.js world, body construction, drop projection |
+| `src/physics.js` | Matter.js world, terrain slabs, body construction, drop projection |
 | `src/camera.js` | framing — keeps guaranteed empty space above the pile |
-| `src/carriers.js` | reads any carrier image's alpha and works out where the load rests |
-| `src/carrier.js` | draws the chosen carrier, the ground, and the sweat |
+| `src/carriers.js` | reads any carrier image column by column into a load-bearing skyline |
+| `src/carrier.js` | draws the chosen carrier, the ground, the sweat, and `?terrain` |
 | `src/names.js` | the Greek roster the re-roll button pulls from |
 | `src/ui.js` | offers, player and pile readouts, setup and select screens, mass formatting |
 | `src/render.js` | sky, clouds, stars, sprites, landing shadow |
@@ -156,22 +160,45 @@ no support line, no scale, no ground offset. To add one:
 It appears on the select screen with a thumbnail, and the pile stacks on it.
 That is the whole process.
 
-The measurement is in [`src/carriers.js`](src/carriers.js), and the rule is one
-sentence: **whatever is highest in the picture bears the weight, from the
-leftmost to the rightmost of those high points.** The art is rasterised, the
-topmost solid row found from its alpha, and the widest solid span within the top
-5% taken as the support line. That lands on Atlas' two raised hands, a
-tortoise's flat shell, and a table top without any of them knowing about each
-other. The image is then scaled so that span is at least as wide as the 400-unit
-platform and at least 320 units deep, centred on the support line, and the
-ground is placed at its feet.
+### How a picture becomes a surface
 
-So the artwork that works best is a figure or object **seen side-on with a flat
-top, drawn wider than what it will carry**, on a transparent background. Wonky
-art still plays, it just holds the pile wherever its highest points happen to
-be. If the rule misreads something, `src/data/carriers.json` takes an optional
-`support` override (`{ "y": 0.3, "left": 0.2, "right": 0.8 }`, fractions of the
-image) — it should rarely be needed.
+The art is rasterised and read **one column of pixels at a time**: the highest
+solid pixel in each column is a point on the carrier's *skyline*. Joined up and
+simplified, that skyline is what objects land on — so a carrier is not one flat
+shelf but every ledge, slope and hollow its own silhouette describes. Atlas' two
+raised hands and the dip of his shoulders between them are three different
+places to put something, and none of that is written down anywhere except in the
+drawing of him.
+
+Everything below the skyline is solid. That is why it is a skyline and not an
+outline: nothing is ever placed from underneath, so the underside costs nothing
+to ignore, and an overhang cannot swallow an object. Each simplified segment
+becomes one convex static slab dropping to the ground — convex by construction,
+so no decomposition step can quietly fill in a hollow you should be able to drop
+something into.
+
+Two smaller things the reading handles, because "any image" means any image:
+
+- **No transparency?** Then the picture has a background rather than none. The
+  four corners are consulted, and if three agree on a colour it is keyed out. If
+  they disagree it is a photo that fills its frame, and a rectangle is the honest
+  answer.
+- **A thin spike on top** — an antenna, a raised umbrella, a chimney — would
+  otherwise be scaled as though it were the whole platform. The band the carrier
+  is measured from widens until it has hold of at least 30% of the width.
+
+Scale and position come from that band: the image is sized so it spans the
+400-unit platform and stands at least 320 units deep, centred on the band, with
+the ground at its feet. Add `?terrain` to the URL to draw the skyline the physics
+is actually using over the art it was read from — the fastest way to tell a
+picture that reads badly from one that reads fine.
+
+So the artwork that works best is a figure or object **seen side-on, drawn wider
+than what it will carry**, ideally on transparency. A flat top is no longer
+required; ledges at several heights are more interesting than one shelf. If the
+band is read wrongly, `src/data/carriers.json` takes an optional `support`
+override (`{ "y": 0.3, "left": 0.2, "right": 0.8 }`, fractions of the image) —
+it only moves the anchor, the skyline is always measured.
 
 The three that ship are Atlas, a World Tortoise and a folding table. Atlas
 himself is vector art, not drawing code:

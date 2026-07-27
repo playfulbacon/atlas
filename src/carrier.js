@@ -10,6 +10,15 @@
 const INK = '#17181a';
 
 /**
+ * `?terrain` in the URL draws the skyline the physics is actually using over
+ * the artwork it was read from. There is no other way to tell a picture that
+ * reads badly from one that reads fine, so it ships rather than living in a
+ * scratch file.
+ */
+const SHOW_TERRAIN =
+  typeof location !== 'undefined' && new URLSearchParams(location.search).has('terrain');
+
+/**
  * @typedef {object} CarrierOptions
  * @property {Carrier | null} carrier
  * @property {number} strain 0 = fresh, 1 = holding up a solar system.
@@ -38,6 +47,41 @@ export function drawCarrier(ctx, opts) {
   ctx.drawImage(carrier.image, d.x, d.y, d.w, d.h);
   if (strain > 0.3) drawEffort(ctx, carrier, strain, time, scale);
 
+  ctx.restore();
+
+  // Outside the tremble, because the collision surface does not tremble.
+  if (SHOW_TERRAIN) drawSkyline(ctx, carrier, groundY, scale);
+}
+
+/**
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {Carrier} carrier
+ * @param {number} groundY
+ * @param {number} scale
+ */
+function drawSkyline(ctx, carrier, groundY, scale) {
+  ctx.save();
+  for (const run of carrier.surface) {
+    if (run.length < 2) continue;
+    ctx.beginPath();
+    ctx.moveTo(run[0].x, run[0].y);
+    for (const p of run) ctx.lineTo(p.x, p.y);
+    ctx.lineTo(run[run.length - 1].x, groundY);
+    ctx.lineTo(run[0].x, groundY);
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(224, 52, 44, 0.18)';
+    ctx.fill();
+    ctx.strokeStyle = '#e0342c';
+    ctx.lineWidth = Math.max(2, 2 / scale);
+    ctx.stroke();
+
+    ctx.fillStyle = '#e0342c';
+    for (const p of run) {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, Math.max(3, 3 / scale), 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
   ctx.restore();
 }
 

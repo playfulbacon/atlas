@@ -59,6 +59,10 @@
  * @property {CarrierDef} def
  * @property {HTMLImageElement} image
  * @property {number} groundY  Where its lowest point meets the ground.
+ * @property {Vec[][]} surface
+ *   The load-bearing skyline in world units, left to right, one run per
+ *   disconnected piece of the artwork. This is every ledge, slope and hollow
+ *   objects can come to rest on — not a single flat shelf.
  * @property {{ x: number, y: number, w: number, h: number }} draw
  * @property {number} headY    Roughly where its top mass sits, for effects.
  */

@@ -5,10 +5,12 @@
  *
  *   npm run atlas-art
  *
- * The figure is drawn on its own terms — anatomy first, game second. What the
- * game needs from it is only the SUPPORT metrics printed at the end: the flat
- * across the tops of both hands, which is what the pile rests on. His head and
- * back sit just below that line, the way the globe met them in the reference.
+ * The figure is drawn on its own terms — anatomy first, game second. Nothing
+ * here is handed to the game: src/carriers.js reads his whole silhouette back
+ * out of the finished picture, so the tops of his hands, the dip of his
+ * shoulders and the slope of his thighs all become surfaces simply by being
+ * drawn. The SUPPORT constants below only set where the hands sit relative to
+ * each other; move a joint and the game re-measures him.
  */
 import { writeFile, mkdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';

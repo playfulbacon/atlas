@@ -10,9 +10,10 @@ import {
   createGround,
   createObjectBody,
   createPlatform,
+  createTerrain,
+  GROUND_MARGIN,
   PLATFORM_TOP,
   projectDrop,
-  toppleLine,
   TOPPLE_X,
 } from './physics.js';
 import { loadCarrier } from './carriers.js';
@@ -52,6 +53,8 @@ export const SLOT_COUNT = 3;
  */
 
 const FIXED_STEP = 1000 / 60;
+/** Only used before a carrier has been measured. */
+const DEFAULT_GROUND_Y = 460;
 /** Objects remembered so the same fridge does not turn up twice in a row. */
 const RECENT_MEMORY = 14;
 
@@ -65,7 +68,9 @@ const COLLAPSE_NOTES = [
 
 export class Game {
   engine = createEngine();
-  platform = createPlatform();
+  /** Static slabs under the carrier's skyline. Rebuilt whenever it changes. */
+  /** @type {any[]} */
+  terrain = [];
   /** @type {any[]} */
   placed = [];
   camera = new Camera();
@@ -87,11 +92,13 @@ export class Game {
   /** @type {Carrier | null} */
   carrier = null;
   /** Ground depth of the current carrier. */
-  groundY = 460;
+  groundY = DEFAULT_GROUND_Y;
   /** @type {any} */
   ground = null;
   /** Set when a drag began somewhere that is not an object, so it is ignored. */
   dragBlocked = false;
+  /** Why the current aim is no good, ready for the toast on a bad release. */
+  refusal = 'Nothing underneath it';
   /** @type {Held | null} */
   held = null;
   /** Screen point the drag began at, and the world point the object began at. */
@@ -114,8 +121,7 @@ export class Game {
     this.input.onRelease = () => this.release();
     this.input.enabled = false;
 
-    Composite.add(this.engine.world, this.platform);
-    this.setGround(this.groundY);
+    this.setCarrier(null);
     this.resize();
     window.addEventListener('resize', () => this.resize());
     window.addEventListener('orientationchange', () => this.resize());
@@ -134,12 +140,24 @@ export class Game {
   }
 
   /**
-   * @param {number} groundY
+   * Swaps in a carrier: its skyline becomes the collision surface and its feet
+   * decide where the ground is. Passing null falls back to a plain flat shelf,
+   * which is what stands behind the title card.
+   * @param {Carrier | null} carrier
    */
-  setGround(groundY) {
+  setCarrier(carrier) {
+    this.carrier = carrier;
+    this.groundY = carrier ? carrier.groundY : DEFAULT_GROUND_Y;
+
+    for (const slab of this.terrain) Composite.remove(this.engine.world, slab);
     if (this.ground) Composite.remove(this.engine.world, this.ground);
-    this.groundY = groundY;
-    this.ground = createGround(groundY);
+
+    this.terrain = carrier
+      ? createTerrain(carrier.surface, this.groundY)
+      : createPlatform();
+    this.ground = createGround(this.groundY);
+
+    Composite.add(this.engine.world, this.terrain);
     Composite.add(this.engine.world, this.ground);
   }
 
@@ -164,11 +182,10 @@ export class Game {
     this.input.enabled = true;
 
     try {
-      this.carrier = await loadCarrier(setup.carrier);
-      this.setGround(this.carrier.groundY);
+      this.setCarrier(await loadCarrier(setup.carrier));
     } catch {
-      // A missing picture should not end the run; the platform is still there.
-      this.carrier = null;
+      // A missing picture should not end the run; a flat shelf will do.
+      this.setCarrier(null);
     }
 
     this.deps.ui.showGame();
@@ -313,14 +330,29 @@ export class Game {
     const bounds = this.camera.bounds();
     const margin = held.def.size * 0.5;
     held.x = clamp(wantX, bounds.minX + margin, bounds.maxX - margin);
-    held.y = clamp(wantY, bounds.minY + margin, PLATFORM_TOP - margin - 6);
+    // Reaching well below the top of the carrier is the whole point of a
+    // skyline — a hollow between two ledges is somewhere you can aim.
+    held.y = clamp(wantY, bounds.minY + margin, this.groundY - margin);
     held.angle = this.input.angle;
 
-    const obstacles = [this.platform, ...this.placed];
+    const obstacles = [...this.terrain, ...this.placed];
     const maxDrop = this.camera.half * 2.4;
     const result = projectDrop(held.body, obstacles, held.x, held.y, held.angle, maxDrop);
-    held.valid = result.status === 'ok';
-    held.restY = result.status === 'ok' ? result.restY : null;
+    // A landing that would come to rest in the grass is refused rather than
+    // taken and instantly lost — the shadow and the topple rule have to agree.
+    if (result.status === 'ok' && result.restBottom <= this.floorLine()) {
+      held.valid = true;
+      held.restY = result.restY;
+    } else {
+      held.valid = false;
+      held.restY = null;
+      this.refusal = result.status === 'ok' ? 'That lands in the grass' : 'Nothing underneath it';
+    }
+  }
+
+  /** Below this, a body is in the grass rather than on the carrier. */
+  floorLine() {
+    return this.groundY - GROUND_MARGIN;
   }
 
   release() {
@@ -330,7 +362,7 @@ export class Game {
     if (!held.valid || held.restY === null) {
       this.sfx.reject();
       this.deps.ui.nudge(held.slot);
-      this.deps.ui.toast('Nothing underneath it');
+      this.deps.ui.toast(this.refusal);
       this.held = null;
       this.deps.ui.setSelected(-1);
       return;
@@ -369,10 +401,24 @@ export class Game {
     void this.fillSlot(slot);
   }
 
-  /** @returns {boolean} */
+  /**
+   * A run ends when something is on the floor rather than on the carrier.
+   *
+   * This used to be a fixed height, which only worked while every carrier was a
+   * single flat shelf: anything below the shelf had obviously fallen. A skyline
+   * has hollows — the dip between Atlas' hands is a genuine place to put
+   * something — so depth alone proves nothing. What does prove it is touching
+   * the grass, and the terrain is solid all the way down to it, so the only way
+   * to reach the grass is to have missed the carrier entirely.
+   *
+   * Measured from the body's lowest point, not its centre: a fridge lying in
+   * the grass has its centre a long way up.
+   * @returns {boolean}
+   */
   hasToppled() {
+    const floor = this.floorLine();
     for (const body of this.placed) {
-      if (body.position.y > toppleLine(this.groundY)) return true;
+      if (body.bounds.max.y > floor) return true;
       if (Math.abs(body.position.x) > TOPPLE_X) return true;
     }
     return false;

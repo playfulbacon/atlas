@@ -15,24 +15,32 @@ Common.setDecomp(decomp);
 
 /* ---- World geometry. One world unit is roughly one centimetre of nonsense. ---- */
 
-/** Atlas' back and hands form a flat platform of this width, centred on x = 0. */
+/**
+ * A carrier is scaled so its top band spans this much, centred on x = 0. It is
+ * not the whole of what you can place on — the skyline in src/carriers.js
+ * usually reaches well past it — it is just the yardstick every carrier is
+ * measured against, so a tortoise and a titan hold objects of the same size.
+ */
 export const PLATFORM_WIDTH = 400;
 export const PLATFORM_HALF = PLATFORM_WIDTH / 2;
-/** Top surface of the platform. Everything stacks upward from here (−y is up). */
+/** The top of the carrier. Everything stacks upward from here (−y is up). */
 export const PLATFORM_TOP = 0;
 export const PLATFORM_DEPTH = 30;
 /**
- * Line below which a body has unambiguously fallen off the carrier. It has to
- * clear the platform above and whatever is resting on the ground below, and the
- * ground moves with the carrier — so it is derived, not fixed.
- * @param {number} groundY
- * @returns {number}
+ * Once a body's lowest point is this close to the grass it is not on the
+ * carrier any more, whatever else is going on. This replaced a fixed height:
+ * with a real skyline underneath, "below the shelf" is no longer a single
+ * number — an object can sit a long way down in a carrier's hollows and still
+ * be held.
  */
-export function toppleLine(groundY) {
-  return Math.min(130, Math.max(50, groundY - 200));
-}
-/** ...or this far sideways. */
+export const GROUND_MARGIN = 14;
+/** ...or it has been flung this far sideways. */
 export const TOPPLE_X = 2600;
+
+/** How far past the ground a terrain slab extends. Solid, not a shell. */
+const TERRAIN_SKIRT = 160;
+/** Terrain slabs narrower than this are dropped; Matter dislikes slivers. */
+const MIN_TERRAIN_SPAN = 1.5;
 
 /**
  * Compound bodies beyond this many parts get replaced with their convex hull.
@@ -53,21 +61,72 @@ export function createEngine() {
   return engine;
 }
 
+const TERRAIN_OPTIONS = {
+  isStatic: true,
+  friction: 0.9,
+  frictionStatic: 1.2,
+  restitution: 0,
+  label: 'terrain',
+};
+
+/**
+ * The flat shelf used when there is no carrier picture to read — the title
+ * screen before one is chosen, or artwork that failed to load.
+ * @returns {any[]}
+ */
 export function createPlatform() {
-  return Bodies.rectangle(0, PLATFORM_TOP + PLATFORM_DEPTH / 2, PLATFORM_WIDTH, PLATFORM_DEPTH, {
-    isStatic: true,
-    friction: 0.9,
-    frictionStatic: 1.2,
-    restitution: 0,
-    label: 'platform',
-  });
+  return [
+    Bodies.rectangle(0, PLATFORM_TOP + PLATFORM_DEPTH / 2, PLATFORM_WIDTH, PLATFORM_DEPTH, {
+      ...TERRAIN_OPTIONS,
+    }),
+  ];
+}
+
+/**
+ * Builds the carrier's collision surface from its skyline: one solid slab under
+ * every segment, dropping far enough that nothing can be shoved out underneath.
+ *
+ * Slabs rather than one traced polygon, because each is convex by construction
+ * — no decomposition, no chance of a concave hull quietly filling in a hollow
+ * that the artwork says you should be able to drop something into.
+ *
+ * @param {import('./types.js').Vec[][]} surface Skyline runs, in world units.
+ * @param {number} groundY
+ * @returns {any[]}
+ */
+export function createTerrain(surface, groundY) {
+  const floor = groundY + TERRAIN_SKIRT;
+  /** @type {any[]} */
+  const bodies = [];
+  for (const run of surface) {
+    for (let i = 0; i < run.length - 1; i++) {
+      const a = run[i];
+      const b = run[i + 1];
+      if (a.y >= floor || b.y >= floor) continue;
+      // A near-vertical segment would be a sliver Matter cannot solve against,
+      // so widen it instead of dropping it — overlapping static slabs are free,
+      // a gap in the surface is not.
+      const right = Math.max(b.x, a.x + MIN_TERRAIN_SPAN);
+      const quad = [
+        { x: a.x, y: a.y },
+        { x: right, y: b.y },
+        { x: right, y: floor },
+        { x: a.x, y: floor },
+      ];
+      // fromVertices re-centres on the polygon centroid, so hand it the very
+      // centroid it is going to compute and the slab lands where it was drawn.
+      const centre = Vertices.centre(quad);
+      const body = Bodies.fromVertices(centre.x, centre.y, [quad], { ...TERRAIN_OPTIONS }, false);
+      if (body && Number.isFinite(body.area) && body.area > 0) bodies.push(body);
+    }
+  }
+  return bodies.length ? bodies : createPlatform();
 }
 
 /**
  * Only exists so a collapse lands somewhere instead of falling forever. It is
- * deliberately *not* offered as a placement surface — see Game.updateHeld.
- */
-/**
+ * deliberately *not* offered as a placement surface — see Game.updateHeld — and
+ * reaching it is how a run ends.
  * @param {number} groundY
  */
 export function createGround(groundY) {
@@ -232,7 +291,8 @@ export function overlaps(body, obstacles) {
  * @param {number} y
  * @param {number} angle
  * @param {number} maxDrop
- * @returns {{ status: 'ok', restY: number } | { status: 'blocked' } | { status: 'nofloor' }}
+ * @returns {{ status: 'ok', restY: number, restBottom: number }
+ *   | { status: 'blocked' } | { status: 'nofloor' }}
  */
 export function projectDrop(body, obstacles, x, y, angle, maxDrop) {
   const originalAngle = body.angle;
@@ -303,7 +363,10 @@ export function projectDrop(body, obstacles, x, y, angle, maxDrop) {
       if (overlaps(body, candidates)) break;
       rest = d;
     }
-    return { status: 'ok', restY: y + rest };
+    // Report where it would actually sit, not just its centre: the caller needs
+    // the lowest point to tell a landing from a landing in the grass.
+    setTransform(body, x, y + rest, angle);
+    return { status: 'ok', restY: y + rest, restBottom: body.bounds.max.y };
   } finally {
     setTransform(body, originalPos.x, originalPos.y, originalAngle);
   }
