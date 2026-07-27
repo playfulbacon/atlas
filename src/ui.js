@@ -101,6 +101,17 @@ export class UI {
   }
 
   /**
+   * Centre of the object as it sits on its stage, in CSS pixels. A drag starts
+   * the object exactly here, so it is lifted out of the stage rather than
+   * teleporting to the pile.
+   * @returns {import('./types.js').Vec}
+   */
+  stageAnchor() {
+    const r = this.el.trayImg.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  }
+
+  /**
    * Height of the score strip along the bottom, so Atlas can stand clear of it.
    * @returns {number}
    */

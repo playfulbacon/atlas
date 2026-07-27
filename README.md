@@ -40,9 +40,9 @@ files you actually wrote.
 
 ## How it plays
 
-- **Grab** the object from its stage at the top of the screen. It steps onto
-  Atlas' back immediately, just clear of the pile, and you bring it down from
-  there — the direction the load is going anyway.
+- **Lift** the object out of its stage at the top of the screen. It appears
+  exactly where it was sitting — no teleporting — and you drag it down onto the
+  load, the direction it is going anyway.
 - **Steer** it from wherever your hand already is: only the *movement* of the
   pointer counts, one-to-one in screen pixels, so the object is never hidden
   under your finger. It collides with nothing while you hold it.

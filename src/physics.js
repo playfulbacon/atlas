@@ -9,7 +9,7 @@ if (!Matter || !decomp) {
   throw new Error('vendor/matter.min.js and vendor/decomp.min.js must load before src/main.js');
 }
 
-const { Bodies, Body, Common, Composite, Engine, Query, Vertices } = Matter;
+const { Bodies, Body, Bounds, Collision, Common, Composite, Engine, Vertices } = Matter;
 
 Common.setDecomp(decomp);
 
@@ -102,7 +102,7 @@ export function createObjectBody(def, sprite, x, y, angle = 0) {
     restitution: def.restitution ?? 0,
     density: densityFor(def.weight),
     label: def.id,
-    slop: 0.02,
+    slop: 0.05,
     // Settle and freeze quickly; a pile that never sleeps is a pile that jitters.
     sleepThreshold: 26,
   };
@@ -172,11 +172,43 @@ export function setTransform(body, x, y, angle) {
 }
 
 /**
+ * True if any convex piece of `body` intersects any convex piece of anything in
+ * `obstacles`.
+ *
+ * Matter's own Query.collides cannot be used here. It walks the *obstacle's*
+ * parts but hands the whole held body to the SAT test, and a compound body's
+ * `vertices` is the convex hull of its parts — so a concave object (a bathtub,
+ * a chair) was tested as its hull while the simulation used its real shape.
+ * Objects came to rest on that hull, floating above true contact, then dropped
+ * into the pile on the first step and shoved everything around. Walking both
+ * sides makes the preview agree with the physics.
+ *
  * @param {any} body @param {any[]} obstacles
  * @returns {boolean}
  */
 export function overlaps(body, obstacles) {
-  return Query.collides(body, obstacles).length > 0;
+  const aParts = body.parts;
+  // parts[0] of a compound is the convex hull of the rest; skip it.
+  const aStart = aParts.length > 1 ? 1 : 0;
+
+  for (let i = 0; i < obstacles.length; i++) {
+    const other = obstacles[i];
+    if (!Bounds.overlaps(other.bounds, body.bounds)) continue;
+
+    const bParts = other.parts;
+    const bStart = bParts.length > 1 ? 1 : 0;
+    for (let j = bStart; j < bParts.length; j++) {
+      const pb = bParts[j];
+      if (!Bounds.overlaps(pb.bounds, body.bounds)) continue;
+
+      for (let k = aStart; k < aParts.length; k++) {
+        const pa = aParts[k];
+        if (!Bounds.overlaps(pa.bounds, pb.bounds)) continue;
+        if (Collision.collides(pa, pb)) return true;
+      }
+    }
+  }
+  return false;
 }
 
 /**
@@ -228,7 +260,14 @@ export function projectDrop(body, obstacles, x, y, angle, maxDrop) {
     for (const o of candidates) {
       from = Math.min(from, o.bounds.min.y - b.max.y);
       to = Math.max(to, o.bounds.max.y - b.min.y);
-      thinnest = Math.min(thinnest, o.bounds.max.y - o.bounds.min.y);
+      // Measure per convex *part*, not per body. A bicycle's bounding box is
+      // 126 units tall but its rim is six thick — stepping by the box would
+      // sweep straight through the wheel and land the object inside it.
+      const parts = o.parts;
+      for (let k = parts.length > 1 ? 1 : 0; k < parts.length; k++) {
+        const pb = parts[k].bounds;
+        thinnest = Math.min(thinnest, pb.max.y - pb.min.y);
+      }
     }
     from = Math.max(0, from);
     to = Math.min(maxDrop, to);
@@ -236,7 +275,8 @@ export function projectDrop(body, obstacles, x, y, angle, maxDrop) {
 
     // The step must be smaller than the thinnest thing we could land on, or a
     // large object sweeps clean through a skateboard and settles inside it.
-    const step = Math.min(16, Math.max(2, thinnest * 0.35));
+    // Bounded below so a decomposition sliver cannot make this crawl.
+    const step = Math.min(12, Math.max(2.5, thinnest * 0.4));
 
     let hitAt = -1;
     for (let d = from; d <= to; d += step) {
@@ -246,7 +286,7 @@ export function projectDrop(body, obstacles, x, y, angle, maxDrop) {
     if (hitAt < 0) return { status: 'nofloor' };
 
     // Creep forward from the last known-clear position for a snug landing.
-    const fine = step / 8;
+    const fine = step / 16;
     let rest = Math.max(0, hitAt - step);
     for (let d = rest + fine; d < hitAt; d += fine) {
       setTransform(body, x, y + d, angle);

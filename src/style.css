@@ -204,8 +204,10 @@ body {
   opacity: 0.4;
 }
 
+/* Fade the card right back while dragging, so the object is clearly visible
+   being lifted out of it rather than washed out behind white card stock. */
 .tray.is-dragging .stage {
-  opacity: 0.75;
+  opacity: 0.2;
 }
 
 .stage.is-empty {

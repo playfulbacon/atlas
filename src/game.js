@@ -217,10 +217,10 @@ export class Game {
   }
 
   /**
-   * The object is steered, not carried. Grabbing it sends it straight to the
-   * top of the pile; after that the pointer contributes only its *movement*, so
-   * you never have to drag your hand all the way up the screen — and the object
-   * is never hidden under your finger.
+   * The object is lifted out of its stage: on grab it appears exactly where it
+   * was sitting, and from then on the pointer contributes only its *movement*,
+   * one-to-one in screen pixels. So it never teleports, and it never hides
+   * under your finger either.
    */
   updateHeld() {
     const held = this.held;
@@ -236,7 +236,7 @@ export class Game {
     if (!this.dragAnchor) {
       this.dragAnchor = {
         screen: { x: this.input.grabPoint.x, y: this.input.grabPoint.y },
-        world: this.entryPosition(held.def.size),
+        world: this.camera.screenToWorld(this.deps.ui.stageAnchor()),
       };
     }
 
@@ -312,16 +312,6 @@ export class Game {
     this.dragAnchor = null;
     this.deps.ui.setDragging(false);
     this.sfx.crash();
-  }
-
-  /**
-   * Where an object appears when you first grab it: centred, just clear of the
-   * highest thing on the pile.
-   * @param {number} size
-   * @returns {import('./types.js').Vec}
-   */
-  entryPosition(size) {
-    return { x: 0, y: this.stackTop() - size * 0.5 - 26 };
   }
 
   /** @returns {number} highest occupied world y (most negative) */
